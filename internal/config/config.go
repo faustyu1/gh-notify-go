@@ -1,64 +1,61 @@
-// Package config loads bot configuration from a TOML file, applies
-// environment overrides for secrets, and validates the result before the
-// process is allowed to start.
+// Package config assembles bot configuration from environment variables
+// (usually loaded from a .env file) and validates it before the process is
+// allowed to start.
 package config
 
 import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/BurntSushi/toml"
 )
 
 type Bot struct {
-	Token    string `toml:"token"`
-	Username string `toml:"username"`
-	OwnerID  int64  `toml:"owner_id"`
+	Token    string
+	Username string
+	OwnerID  int64
 }
 
 type Database struct {
-	URL string `toml:"url"`
+	URL string
 }
 
 type GitHub struct {
-	AppID          int64  `toml:"app_id"`
-	Slug           string `toml:"slug"`
-	PrivateKeyPath string `toml:"private_key_path"`
-	WebhookSecret  string `toml:"webhook_secret"`
+	AppID          int64
+	Slug           string
+	PrivateKeyPath string
+	WebhookSecret  string
 }
 
 type HTTP struct {
-	Addr      string `toml:"addr"`
-	PublicURL string `toml:"public_url"`
+	Addr      string
+	PublicURL string
 }
 
 // Limits holds the tunables the spec calls out as estimates rather than
 // constants, so an operator can adjust them without a rebuild.
 type Limits struct {
-	StarDebounce  time.Duration `toml:"star_debounce"`
-	StarCooldown  time.Duration `toml:"star_cooldown"`
-	ChatPerMinute int           `toml:"chat_per_minute"`
-	Workers       int           `toml:"workers"`
+	StarDebounce  time.Duration
+	StarCooldown  time.Duration
+	ChatPerMinute int
+	Workers       int
 }
 
 type Config struct {
-	Bot      Bot      `toml:"bot"`
-	Database Database `toml:"database"`
-	GitHub   GitHub   `toml:"github"`
-	HTTP     HTTP     `toml:"http"`
-	Limits   Limits   `toml:"limits"`
+	Bot      Bot
+	Database Database
+	GitHub   GitHub
+	HTTP     HTTP
+	Limits   Limits
 }
 
-func Load(path string) (*Config, error) {
+func Load() (*Config, error) {
 	var cfg Config
-	if _, err := toml.DecodeFile(path, &cfg); err != nil {
-		return nil, fmt.Errorf("decode config %s: %w", path, err)
+	if err := applyEnv(&cfg); err != nil {
+		return nil, err
 	}
-
-	applyEnv(&cfg)
 	applyDefaults(&cfg)
 
 	if err := cfg.validate(); err != nil {
@@ -67,19 +64,65 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-func applyEnv(cfg *Config) {
-	if v := os.Getenv("BOT_TOKEN"); v != "" {
-		cfg.Bot.Token = v
+func applyEnv(cfg *Config) error {
+	cfg.Bot.Token = os.Getenv("BOT_TOKEN")
+	cfg.Bot.Username = os.Getenv("BOT_USERNAME")
+	cfg.Database.URL = os.Getenv("DATABASE_URL")
+	cfg.GitHub.Slug = os.Getenv("GITHUB_SLUG")
+	cfg.GitHub.PrivateKeyPath = os.Getenv("GITHUB_PRIVATE_KEY_PATH")
+	cfg.GitHub.WebhookSecret = os.Getenv("GITHUB_WEBHOOK_SECRET")
+	cfg.HTTP.Addr = os.Getenv("HTTP_ADDR")
+	cfg.HTTP.PublicURL = os.Getenv("PUBLIC_URL")
+
+	var err error
+	if cfg.Bot.OwnerID, err = envInt64("BOT_OWNER_ID"); err != nil {
+		return err
 	}
-	if v := os.Getenv("DATABASE_URL"); v != "" {
-		cfg.Database.URL = v
+	if cfg.GitHub.AppID, err = envInt64("GITHUB_APP_ID"); err != nil {
+		return err
 	}
-	if v := os.Getenv("GITHUB_WEBHOOK_SECRET"); v != "" {
-		cfg.GitHub.WebhookSecret = v
+	if cfg.Limits.ChatPerMinute, err = envInt("CHAT_PER_MINUTE"); err != nil {
+		return err
 	}
-	if v := os.Getenv("GITHUB_PRIVATE_KEY_PATH"); v != "" {
-		cfg.GitHub.PrivateKeyPath = v
+	if cfg.Limits.Workers, err = envInt("WORKERS"); err != nil {
+		return err
 	}
+	if cfg.Limits.StarDebounce, err = envDuration("STAR_DEBOUNCE"); err != nil {
+		return err
+	}
+	if cfg.Limits.StarCooldown, err = envDuration("STAR_COOLDOWN"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func envInt64(key string) (int64, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", key, err)
+	}
+	return v, nil
+}
+
+func envInt(key string) (int, error) {
+	v, err := envInt64(key)
+	return int(v), err
+}
+
+func envDuration(key string) (time.Duration, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return 0, nil
+	}
+	v, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", key, err)
+	}
+	return v, nil
 }
 
 func applyDefaults(cfg *Config) {

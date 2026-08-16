@@ -10,4 +10,3 @@ RUN adduser -D -u 10001 bot && apk add --no-cache ca-certificates
 USER bot
 COPY --from=build /out/bot /usr/local/bin/bot
 ENTRYPOINT ["/usr/local/bin/bot"]
-CMD ["-config", "/etc/gh-notify/config.toml"]

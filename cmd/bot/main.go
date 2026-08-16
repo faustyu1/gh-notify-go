@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"log/slog"
 	"net/http"
 	"os"
@@ -32,9 +31,6 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "config.toml", "path to the config file")
-	flag.Parse()
-
 	if err := config.LoadDotEnv(".env"); err != nil {
 		slog.Warn("read .env", "error", err)
 	}
@@ -43,14 +39,14 @@ func main() {
 		os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := run(ctx, *configPath); err != nil {
+	if err := run(ctx); err != nil {
 		slog.Error("fatal", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, configPath string) error {
-	cfg, err := config.Load(configPath)
+func run(ctx context.Context) error {
+	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}

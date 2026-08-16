@@ -1,8 +1,6 @@
 package config_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,35 +9,24 @@ import (
 	"github.com/faustyu/gh-notify-go/internal/config"
 )
 
-const validTOML = `
-[bot]
-token = "123:abc"
-username = "gh_notify_bot"
-owner_id = 42
-
-[database]
-url = "postgres://u:p@localhost:5432/db"
-
-[github]
-app_id = 777
-slug = "gh-notify"
-private_key_path = "secrets/app.pem"
-webhook_secret = "s3cret"
-
-[http]
-addr = ":8080"
-public_url = "https://example.com"
-`
-
-func writeConfig(t *testing.T, body string) string {
+// setRequired fills every mandatory variable so a test can then override the
+// one it cares about. t.Setenv restores the previous values afterwards.
+func setRequired(t *testing.T) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "config.toml")
-	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
-	return path
+	t.Setenv("BOT_TOKEN", "123:abc")
+	t.Setenv("BOT_USERNAME", "gh_notify_bot")
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db")
+	t.Setenv("GITHUB_APP_ID", "777")
+	t.Setenv("GITHUB_SLUG", "gh-notify")
+	t.Setenv("GITHUB_PRIVATE_KEY_PATH", "secrets/app.pem")
+	t.Setenv("GITHUB_WEBHOOK_SECRET", "s3cret")
+	t.Setenv("PUBLIC_URL", "https://example.com")
 }
 
 func TestLoadAppliesDefaults(t *testing.T) {
-	cfg, err := config.Load(writeConfig(t, validTOML))
+	setRequired(t)
+
+	cfg, err := config.Load()
 	require.NoError(t, err)
 
 	require.Equal(t, "123:abc", cfg.Bot.Token)
@@ -48,23 +35,31 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	require.Equal(t, 24*time.Hour, cfg.Limits.StarCooldown)
 	require.Equal(t, 20, cfg.Limits.ChatPerMinute)
 	require.Equal(t, 4, cfg.Limits.Workers)
+	require.Equal(t, ":8080", cfg.HTTP.Addr)
 }
 
-func TestLoadEnvOverridesFile(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "999:zzz")
-	t.Setenv("DATABASE_URL", "postgres://env/db")
-	t.Setenv("GITHUB_WEBHOOK_SECRET", "envsecret")
+func TestLoadReadsEveryVariable(t *testing.T) {
+	setRequired(t)
+	t.Setenv("BOT_OWNER_ID", "42")
+	t.Setenv("HTTP_ADDR", ":9090")
+	t.Setenv("WORKERS", "8")
+	t.Setenv("CHAT_PER_MINUTE", "30")
+	t.Setenv("STAR_DEBOUNCE", "90s")
 
-	cfg, err := config.Load(writeConfig(t, validTOML))
+	cfg, err := config.Load()
 	require.NoError(t, err)
 
-	require.Equal(t, "999:zzz", cfg.Bot.Token)
-	require.Equal(t, "postgres://env/db", cfg.Database.URL)
-	require.Equal(t, "envsecret", cfg.GitHub.WebhookSecret)
+	require.Equal(t, int64(42), cfg.Bot.OwnerID)
+	require.Equal(t, ":9090", cfg.HTTP.Addr)
+	require.Equal(t, 8, cfg.Limits.Workers)
+	require.Equal(t, 30, cfg.Limits.ChatPerMinute)
+	require.Equal(t, 90*time.Second, cfg.Limits.StarDebounce)
 }
 
 func TestLoadReportsEveryMissingField(t *testing.T) {
-	_, err := config.Load(writeConfig(t, "[bot]\nusername = \"x\"\n"))
+	// No variable is set: every required field must be named at once.
+	cfg, err := config.Load()
+	require.Nil(t, cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "bot.token")
 	require.Contains(t, err.Error(), "database.url")
@@ -73,10 +68,28 @@ func TestLoadReportsEveryMissingField(t *testing.T) {
 }
 
 func TestLoadRejectsSQLiteURL(t *testing.T) {
-	_, err := config.Load(writeConfig(t, validTOML+"\n"))
-	require.NoError(t, err)
-
+	setRequired(t)
 	t.Setenv("DATABASE_URL", "sqlite://local.db")
-	_, err = config.Load(writeConfig(t, validTOML))
+
+	_, err := config.Load()
 	require.ErrorContains(t, err, "database.url must be a postgres:// URL")
+}
+
+func TestLoadNamesTheBadVariable(t *testing.T) {
+	setRequired(t)
+	t.Setenv("WORKERS", "many")
+
+	_, err := config.Load()
+	require.ErrorContains(t, err, "WORKERS")
+}
+
+func TestLoadIgnoresEmptyOptionals(t *testing.T) {
+	setRequired(t)
+	t.Setenv("BOT_OWNER_ID", "")
+	t.Setenv("STAR_COOLDOWN", "")
+
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.Zero(t, cfg.Bot.OwnerID)
+	require.Equal(t, 24*time.Hour, cfg.Limits.StarCooldown)
 }
