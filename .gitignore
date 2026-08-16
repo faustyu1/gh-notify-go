@@ -2,3 +2,4 @@
 secrets/
 bin/
 *.pem
+cloudflared/*.json

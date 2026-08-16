@@ -1,0 +1,17 @@
+# Cloudflare Tunnel instead of a reverse proxy on a public IP. Nothing listens
+# on a public port, so the host's address never reaches GitHub or a scanner.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --config /etc/cloudflared/config.yml --no-autoupdate run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      # A tunnel to a bot that cannot reach Postgres would serve 502s under the
+      # public hostname; waiting for the healthcheck keeps the name dark until
+      # the bot can actually answer.
+      bot:
+        condition: service_healthy
+    restart: unless-stopped
