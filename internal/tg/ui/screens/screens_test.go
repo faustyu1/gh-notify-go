@@ -143,3 +143,24 @@ func TestPlaceholderRendersTitleAndWayBack(t *testing.T) {
 	require.Contains(t, view.Text, "Статус")
 	require.Contains(t, labels(view), "🏠 В начало")
 }
+
+func TestAddToChatLinksToTelegramGroupPicker(t *testing.T) {
+	screen := screens.NewAddToChat("g0thubbot")
+
+	require.Equal(t, "add_to_chat", screen.Name())
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "Добавить в чат")
+	require.Contains(t, labels(view), "➕ Добавить в группу")
+
+	var url string
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.URL != "" {
+				url = b.URL
+			}
+		}
+	}
+	require.Equal(t, "https://t.me/g0thubbot?startgroup=add", url)
+}

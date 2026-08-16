@@ -93,6 +93,7 @@ func run(ctx context.Context) error {
 		screens.NewRepos(store, github, 10),
 		screens.NewRepoDetail(store),
 		screens.NewChatPicker(store),
+		screens.NewAddToChat(cfg.Bot.Username),
 		screens.NewResult(),
 		// Implemented by the follow-up plans; registered now so no button
 		// in the shipped interface leads nowhere.
@@ -100,7 +101,6 @@ func run(ctx context.Context) error {
 		screens.NewPlaceholder("chat_detail", "Настройки чата"),
 		screens.NewPlaceholder("status", "Статус"),
 		screens.NewPlaceholder("settings", "Настройки"),
-		screens.NewPlaceholder("add_to_chat", "Добавить в чат"),
 	)
 
 	integrator := service.NewIntegrator(store, tg.NewAdminChecker(bot, time.Minute))
