@@ -28,3 +28,20 @@ type Integration struct {
 	CreatedByUserID      int64
 	OwnerTelegramID      int64
 }
+
+type Installation struct {
+	ID                   int64
+	GitHubInstallationID int64
+	AccountLogin         string
+	AccountType          string
+	Suspended            bool
+}
+
+// ChatSummary is what the chats screen lists: one row per chat with enough
+// context to pick the right one.
+type ChatSummary struct {
+	ChatID           int64
+	TelegramChatID   int64
+	Title            string
+	IntegrationCount int
+}
