@@ -33,6 +33,15 @@ func (i integrationDetail) Render(_ context.Context, s ui.Session) (ui.View, err
 				},
 			}},
 			{{
+				Label: "🩺 Здоровье",
+				Screen: "health",
+				Params: ui.Params{
+					"integration": s.Params["integration"],
+					"name":        s.Params["name"],
+					"chat":        s.Params["chat"],
+				},
+			}},
+			{{
 				Label: "🚫 Фильтры",
 				Screen: "filters",
 				Params: ui.Params{

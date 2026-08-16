@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/config"
 	_ "github.com/faustyu/gh-notify-go/internal/events"
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
 	"github.com/faustyu/gh-notify-go/internal/httpapi"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
@@ -84,6 +86,27 @@ func run(ctx context.Context) error {
 		return store.ClearTopic(ctx, chatID)
 	})
 
+	// A row that will never be retried must be heard about: the owner gets a
+	// DM, and a kicked bot marks the integration broken.
+	onPermanent := func(ctx context.Context, job outbox.Job, err error) {
+		owner, repo, lookupErr := store.IntegrationOwner(ctx, job.IntegrationID)
+		if lookupErr != nil {
+			slog.Error("terminal failure without owner", "job", job.ID, "error", err)
+			return
+		}
+		if errors.Is(err, tg.ErrKicked) {
+			if brokenErr := store.MarkIntegrationBroken(ctx, job.IntegrationID, err.Error()); brokenErr != nil {
+				slog.Error("mark integration broken", "error", brokenErr)
+			}
+		}
+		_, _ = bot.SendMessage(ctx, &telego.SendMessageParams{
+			ChatID:    telego.ChatID{ID: owner},
+			ParseMode: telego.ModeHTML,
+			Text: fmt.Sprintf("⚠️ <b>Доставка не удалась</b>\n\n%s → чат %d\n\n<code>%s</code>",
+				render.Escape(repo), job.TelegramChatID, render.Escape(err.Error())),
+		})
+	}
+
 	nav := ui.NewPostgresNav(store.Pool())
 	engine := ui.NewEngine(nav)
 	engine.Register(
@@ -100,6 +123,7 @@ func run(ctx context.Context) error {
 		screens.NewIntegrationDetail(),
 		screens.NewEvents(store),
 		screens.NewFilters(store),
+		screens.NewHealth(store),
 		screens.NewStatus(store),
 		screens.NewSettings(cfg.Limits.StarDebounce, cfg.Limits.StarCooldown, cfg.Limits.ChatPerMinute),
 	)
@@ -154,7 +178,10 @@ func run(ctx context.Context) error {
 		go func(n int) {
 			defer wg.Done()
 			slog.Info("outbox worker started", "n", n)
-			outbox.NewWorker(store.Pool(), sender, time.Now).Run(ctx, time.Second)
+			outbox.NewWorker(store.Pool(), sender, time.Now).
+				WithChatPerMinute(cfg.Limits.ChatPerMinute).
+				WithOnPermanent(onPermanent).
+				Run(ctx, time.Second)
 		}(i)
 	}
 

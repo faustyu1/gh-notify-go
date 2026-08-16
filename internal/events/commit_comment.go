@@ -8,15 +8,12 @@ import (
 	"github.com/faustyu/gh-notify-go/internal/events/render"
 )
 
-type issueCommentPayload struct {
-	Action string `json:"action"`
-	Issue  struct {
-		Number  int    `json:"number"`
-		HTMLURL string `json:"html_url"`
-		Title   string `json:"title"`
-	} `json:"issue"`
+type commitCommentPayload struct {
+	Action  string `json:"action"`
 	Comment struct {
-		Body string `json:"body"`
+		CommitID string `json:"commit_id"`
+		HTMLURL  string `json:"html_url"`
+		Body     string `json:"body"`
 	} `json:"comment"`
 	Repo struct {
 		FullName string `json:"full_name"`
@@ -28,13 +25,13 @@ type issueCommentPayload struct {
 }
 
 func init() {
-	Register("issue_comment", ActionFilter{"created"}, renderIssueComment)
+	Register("commit_comment", ActionFilter{"created"}, renderCommitComment)
 }
 
-func renderIssueComment(raw json.RawMessage) (string, error) {
-	var p issueCommentPayload
+func renderCommitComment(raw json.RawMessage) (string, error) {
+	var p commitCommentPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
-		return "", fmt.Errorf("parse issue_comment: %w", err)
+		return "", fmt.Errorf("parse commit_comment: %w", err)
 	}
 
 	var b strings.Builder
@@ -42,10 +39,9 @@ func renderIssueComment(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s прокомментировал issue %s\n\n",
+	b.WriteString(fmt.Sprintf("%s прокомментировал коммит %s\n\n",
 		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		render.Link(p.Issue.HTMLURL, fmt.Sprintf("#%d «%s»",
-			p.Issue.Number, render.Truncate(p.Issue.Title, 60))),
+		render.Link(p.Comment.HTMLURL, shortSHA(p.Comment.CommitID)),
 	))
 	b.WriteString(render.Markdown(p.Comment.Body, 300))
 	return b.String(), nil

@@ -1,0 +1,6 @@
+{
+  "action": "created",
+  "comment": {"commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "html_url": "https://github.com/acme/app/commit/bbbbbbb#commitcomment-1", "body": "This breaks on `nil`."},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

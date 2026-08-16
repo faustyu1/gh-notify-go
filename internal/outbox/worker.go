@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,6 +26,7 @@ const batchSize = 20
 
 type Job struct {
 	ID             int64
+	ChatID         int64
 	IntegrationID  int64
 	TelegramChatID int64
 	TopicID        *int64
@@ -37,14 +39,33 @@ type Deliverer interface {
 	Deliver(ctx context.Context, job Job) error
 }
 
+// PermanentHook is called once for a row that will never be retried — the
+// integration owner must hear about it.
+type PermanentHook func(ctx context.Context, job Job, err error)
+
 type Worker struct {
-	pool      *pgxpool.Pool
-	deliverer Deliverer
-	now       func() time.Time
+	pool           *pgxpool.Pool
+	deliverer      Deliverer
+	now            func() time.Time
+	chatPerMinute  int
+	onPermanent    PermanentHook
 }
 
 func NewWorker(pool *pgxpool.Pool, d Deliverer, now func() time.Time) *Worker {
 	return &Worker{pool: pool, deliverer: d, now: now}
+}
+
+// WithChatPerMinute arms the per-chat rate valve: beyond this many delivered
+// messages per minute, further rows collapse into one digest per chat.
+func (w *Worker) WithChatPerMinute(limit int) *Worker {
+	w.chatPerMinute = limit
+	return w
+}
+
+// WithOnPermanent registers the terminal-failure hook.
+func (w *Worker) WithOnPermanent(hook PermanentHook) *Worker {
+	w.onPermanent = hook
+	return w
 }
 
 // Backoff maps an attempt number to the wait before the next try.
@@ -98,12 +119,112 @@ func (w *Worker) RunOnce(ctx context.Context) (int, error) {
 	}
 
 	for _, job := range jobs {
+		if w.chatPerMinute > 0 && job.Kind != "digest" {
+			over, err := w.chatOverBudget(ctx, job.ChatID)
+			if err != nil {
+				return len(jobs), err
+			}
+			if over {
+				if err := w.digest(ctx, job); err != nil {
+					return len(jobs), err
+				}
+				continue
+			}
+		}
+
 		deliverErr := w.deliverer.Deliver(ctx, job)
 		if err := w.record(ctx, job, deliverErr); err != nil {
 			return len(jobs), err
 		}
 	}
 	return len(jobs), nil
+}
+
+// chatOverBudget counts messages this chat received in the last minute. The
+// check races with concurrent workers by a row or two, which the valve is
+// coarse enough to absorb.
+func (w *Worker) chatOverBudget(ctx context.Context, chatID int64) (bool, error) {
+	var sent int
+	err := w.pool.QueryRow(ctx, `
+		SELECT count(*) FROM outbox
+		WHERE chat_id = $1 AND status = 'sent'
+		  AND sent_at > $2::timestamptz - interval '60 seconds'`,
+		chatID, w.now()).Scan(&sent)
+	if err != nil {
+		return false, fmt.Errorf("count sent: %w", err)
+	}
+	return sent >= w.chatPerMinute, nil
+}
+
+// digest merges an over-budget row into the chat's single pending digest row:
+// one summary message instead of N more. Sustained flooding keeps merging,
+// but the digest goes out once the minute calms down.
+func (w *Worker) digest(ctx context.Context, job Job) error {
+	groupKey := fmt.Sprintf("digest:%d", job.ChatID)
+
+	tx, err := w.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin digest: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var (
+		rowID   int64
+		rawJSON []byte
+		payload struct {
+			Items []string `json:"items"`
+		}
+	)
+	err = tx.QueryRow(ctx, `
+		SELECT id, payload FROM outbox
+		WHERE group_key = $1 AND status = 'pending'
+		FOR UPDATE`, groupKey).Scan(&rowID, &rawJSON)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		payload.Items = []string{job.Kind}
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE outbox
+			SET event_kind = 'digest', payload = $2, group_key = $3,
+			    status = 'pending', scheduled_at = $4
+			WHERE id = $1`,
+			job.ID, raw, groupKey, w.now().Add(time.Minute)); err != nil {
+			return fmt.Errorf("create digest: %w", err)
+		}
+	case err != nil:
+		return fmt.Errorf("load digest: %w", err)
+	default:
+		if err := json.Unmarshal(rawJSON, &payload); err != nil {
+			return fmt.Errorf("decode digest: %w", err)
+		}
+		// Cap growth: a digest bigger than this is absurd, and keeping the
+		// original schedule stops sustained floods from postponing it forever.
+		if len(payload.Items) < 50 {
+			payload.Items = append(payload.Items, job.Kind)
+			if err := tx.QueryRow(ctx, `
+				UPDATE outbox SET payload = $2
+				WHERE id = $1 RETURNING id`, rowID, mustJSON(payload)).Scan(&rowID); err != nil {
+				return fmt.Errorf("merge digest: %w", err)
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE outbox SET scheduled_at = $2 WHERE id = $1`,
+				rowID, w.now().Add(time.Minute)); err != nil {
+				return fmt.Errorf("postpone digest: %w", err)
+			}
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM outbox WHERE id = $1`, job.ID); err != nil {
+			return fmt.Errorf("digest source row: %w", err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func mustJSON(v any) []byte {
+	raw, _ := json.Marshal(v)
+	return raw
 }
 
 // claim marks rows as in-flight. SKIP LOCKED is what lets several workers
@@ -128,7 +249,8 @@ func (w *Worker) claim(ctx context.Context) ([]Job, error) {
 		SET status = 'sending'
 		FROM claimed, chats c
 		WHERE o.id = claimed.id AND c.id = o.chat_id
-		RETURNING o.id, o.integration_id, c.telegram_chat_id, c.topic_id,
+		RETURNING o.id, o.chat_id, o.integration_id,
+		          c.telegram_chat_id, c.topic_id,
 		          o.event_kind, o.payload, o.attempts`,
 		w.now(), batchSize)
 	if err != nil {
@@ -139,7 +261,8 @@ func (w *Worker) claim(ctx context.Context) ([]Job, error) {
 	for rows.Next() {
 		var job Job
 		if err := rows.Scan(
-			&job.ID, &job.IntegrationID, &job.TelegramChatID, &job.TopicID,
+			&job.ID, &job.ChatID, &job.IntegrationID,
+			&job.TelegramChatID, &job.TopicID,
 			&job.Kind, &job.Payload, &job.Attempts,
 		); err != nil {
 			rows.Close()
@@ -186,6 +309,9 @@ func (w *Worker) record(ctx context.Context, job Job, deliverErr error) error {
 			WHERE id = $1`, job.ID, attempts, deliverErr.Error())
 		if err != nil {
 			return fmt.Errorf("mark failed: %w", err)
+		}
+		if w.onPermanent != nil {
+			w.onPermanent(ctx, job, deliverErr)
 		}
 		return nil
 	}

@@ -14,6 +14,7 @@ type issuesPayload struct {
 		Number  int    `json:"number"`
 		HTMLURL string `json:"html_url"`
 		Title   string `json:"title"`
+		Body    string `json:"body"`
 		User    struct {
 			Login   string `json:"login"`
 			HTMLURL string `json:"html_url"`
@@ -51,6 +52,9 @@ func renderIssues(raw json.RawMessage) (string, error) {
 		render.Link(p.Issue.HTMLURL, fmt.Sprintf("#%d", p.Issue.Number)),
 	))
 	b.WriteString("<b>" + render.Escape(render.Truncate(p.Issue.Title, 120)) + "</b>")
+	if body := strings.TrimSpace(p.Issue.Body); body != "" {
+		b.WriteString("\n\n" + render.Markdown(body, 500))
+	}
 	return b.String(), nil
 }
 

@@ -9,9 +9,9 @@ import (
 )
 
 type pullRequestReviewPayload struct {
-	Action  string `json:"action"`
-	Number  int    `json:"number"`
-	Review  struct {
+	Action string `json:"action"`
+	Number int    `json:"number"`
+	Review struct {
 		State string `json:"state"`
 		Body  string `json:"body"`
 	} `json:"review"`
@@ -52,7 +52,7 @@ func renderPullRequestReview(raw json.RawMessage) (string, error) {
 			p.Number, render.Truncate(p.PullRequest.Title, 60))),
 	))
 	if body := strings.TrimSpace(p.Review.Body); body != "" {
-		b.WriteString("\n" + render.Escape(render.Truncate(body, 300)))
+		b.WriteString("\n" + render.Markdown(body, 300))
 	}
 	return b.String(), nil
 }

@@ -55,7 +55,7 @@ func renderRelease(raw json.RawMessage) (string, error) {
 		b.WriteString("pre-release\n")
 	}
 	if body := strings.TrimSpace(p.Release.Body); body != "" {
-		b.WriteString("\n" + render.Escape(render.Truncate(body, 300)))
+		b.WriteString("\n" + render.Markdown(body, 300))
 	}
 	return b.String(), nil
 }

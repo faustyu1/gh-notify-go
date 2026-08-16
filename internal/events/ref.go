@@ -9,12 +9,12 @@ import (
 )
 
 type refPayload struct {
-	Ref        string `json:"ref"`
-	RefType    string `json:"ref_type"` // branch | tag
-	Repo       struct {
+	Ref     string `json:"ref"`
+	RefType string `json:"ref_type"` // branch | tag
+	Repo    struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
-	Sender     struct {
+	Sender struct {
 		Login   string `json:"login"`
 		HTMLURL string `json:"html_url"`
 	} `json:"sender"`

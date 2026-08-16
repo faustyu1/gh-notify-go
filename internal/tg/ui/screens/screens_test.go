@@ -286,3 +286,29 @@ func TestStatusScreenSummarises(t *testing.T) {
 	require.Contains(t, view.Text, "12")
 	require.Contains(t, view.Text, "Не доставлено: <b>1</b>")
 }
+
+func TestHealthScreenShowsVitals(t *testing.T) {
+	screen := screens.NewHealth(fakeHealth{broken: "bot was kicked", sent: 5})
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2,
+		Params: ui.Params{"integration": "7"}})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "Сломана")
+	require.Contains(t, view.Text, "5")
+}
+
+type fakeHealth struct {
+	broken    string
+	sent      int
+	lastEvent bool
+}
+
+func (f fakeHealth) HealthForIntegration(context.Context, int64) (storage.IntegrationHealth, error) {
+	h := storage.IntegrationHealth{
+		RepoFullName: "acme/app", ChatTitle: "Team", Sent24h: f.sent,
+	}
+	if f.broken != "" {
+		h.BrokenReason = &f.broken
+	}
+	return h, nil
+}

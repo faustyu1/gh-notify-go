@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -216,4 +217,98 @@ func TestConcurrentWorkersDoNotDeliverTheSameRowTwice(t *testing.T) {
 	wg.Wait()
 
 	require.Equal(t, 20, deliverer.count(), "each row must be delivered exactly once")
+}
+
+func TestRateValveCoalescesOverflowIntoDigest(t *testing.T) {
+	ctx := context.Background()
+	pool, chatID, integrationID := fixture(t)
+
+	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	queue := outbox.NewQueue(pool, func() time.Time { return base })
+
+	// The chat already got its two messages this minute.
+	_, err := pool.Exec(ctx, `
+		INSERT INTO outbox (chat_id, integration_id, event_kind, payload, status, sent_at)
+		VALUES ($1, $2, 'push', '{}', 'sent', $3), ($1, $2, 'push', '{}', 'sent', $3)`,
+		chatID, integrationID, base)
+	require.NoError(t, err)
+
+	for i := range 3 {
+		_, err := queue.Enqueue(ctx, outbox.Row{
+			ChatID: chatID, IntegrationID: integrationID,
+			Kind: "push", Payload: json.RawMessage(`{}`),
+		})
+		require.NoError(t, err)
+		_ = i
+	}
+
+	deliverer := &recordingDeliverer{}
+	worker := outbox.NewWorker(pool, deliverer, func() time.Time { return base }).
+		WithChatPerMinute(2)
+
+	processed, err := worker.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 3, processed)
+	require.Zero(t, deliverer.count(), "an over-budget chat must not receive more messages")
+
+	// All three rows collapsed into one pending digest.
+	var (
+		kinds  []string
+		status string
+	)
+	rows, err := pool.Query(ctx,
+		`SELECT event_kind, status FROM outbox WHERE event_kind IN ('push','digest') AND status <> 'sent'`)
+	require.NoError(t, err)
+	defer rows.Close()
+	for rows.Next() {
+		var kind, st string
+		require.NoError(t, rows.Scan(&kind, &st))
+		kinds = append(kinds, kind)
+		status = st
+	}
+	require.Equal(t, []string{"digest"}, kinds)
+	require.Equal(t, "pending", status)
+
+	// A minute later the digest itself is deliverable and counts as one send.
+	later := base.Add(61 * time.Second)
+	worker = outbox.NewWorker(pool, deliverer, func() time.Time { return later }).
+		WithChatPerMinute(2)
+	processed, err = worker.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, processed)
+	require.Equal(t, 1, deliverer.count())
+	require.Equal(t, "digest", deliverer.jobs[0].Kind)
+}
+
+func TestOnPermanentHookFires(t *testing.T) {
+	ctx := context.Background()
+	pool, chatID, integrationID := fixture(t)
+
+	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	queue := outbox.NewQueue(pool, func() time.Time { return base })
+	id, err := queue.Enqueue(ctx, outbox.Row{
+		ChatID: chatID, IntegrationID: integrationID,
+		Kind: "push", Payload: json.RawMessage(`{}`),
+	})
+	require.NoError(t, err)
+
+	var hooked atomic.Bool
+	var hookedJob outbox.Job
+	worker := outbox.NewWorker(pool,
+		&recordingDeliverer{err: errors.Join(outbox.ErrPermanent, errors.New("bot was kicked"))},
+		func() time.Time { return base },
+	).WithOnPermanent(func(_ context.Context, job outbox.Job, _ error) {
+		hookedJob = job
+		hooked.Store(true)
+	})
+
+	_, err = worker.RunOnce(ctx)
+	require.NoError(t, err)
+	require.True(t, hooked.Load())
+	require.Equal(t, id, hookedJob.ID)
+
+	var status string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT status FROM outbox WHERE id = $1`, id).Scan(&status))
+	require.Equal(t, "failed", status)
 }

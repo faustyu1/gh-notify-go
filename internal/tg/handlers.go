@@ -130,11 +130,15 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		if err := deps.Store.DeleteFilter(ctx, paramInt(params["filter"])); err != nil {
 			return err
 		}
+		audit(ctx, deps, userID, paramInt(params["chat"]), "integration.filter_delete",
+			map[string]any{"filter": params["filter"]})
 		return reopen(ctx, deps, userID, query.From.ID, "filters", params)
 	case "a_int_del":
 		if err := deps.Store.DeleteIntegration(ctx, paramInt(params["integration"])); err != nil {
 			return err
 		}
+		audit(ctx, deps, userID, paramInt(params["chat"]), "integration.delete",
+			map[string]any{"repo": params["name"]})
 		return reopen(ctx, deps, userID, query.From.ID, "chat_detail", params)
 	}
 
@@ -171,7 +175,20 @@ func applyMute(ctx *th.Context, deps HandlerDeps, userID, telegramID int64, para
 	if err := deps.Store.SetChatMute(ctx, telegramChatID, until); err != nil {
 		return err
 	}
+	audit(ctx, deps, userID, telegramChatID, "chat.mute", map[string]any{"hours": hours})
 	return reopen(ctx, deps, userID, telegramID, "chat_detail", params)
+}
+
+// audit best-effort records an admin action; a logging failure must not
+// block the action itself.
+func audit(ctx *th.Context, deps HandlerDeps, userID, telegramChatID int64, action string, meta map[string]any) {
+	var chatID *int64
+	if chat, err := deps.Store.ChatByTelegramID(ctx, telegramChatID); err == nil {
+		chatID = &chat.ID
+	}
+	if err := deps.Store.WriteAudit(ctx, userID, chatID, action, meta); err != nil {
+		slog.Warn("audit", "action", action, "error", err)
+	}
 }
 
 func toggleEvent(ctx *th.Context, deps HandlerDeps, userID, telegramID int64, params ui.Params) error {
@@ -180,6 +197,8 @@ func toggleEvent(ctx *th.Context, deps HandlerDeps, userID, telegramID int64, pa
 		paramInt(params["integration"]), params["kind"], enabled); err != nil {
 		return err
 	}
+	audit(ctx, deps, userID, paramInt(params["chat"]), "integration.events",
+		map[string]any{"kind": params["kind"], "enabled": enabled})
 	return reopen(ctx, deps, userID, telegramID, "events", params)
 }
 
@@ -193,6 +212,8 @@ func applyEventPreset(ctx *th.Context, deps HandlerDeps, userID, telegramID int6
 			return err
 		}
 	}
+	audit(ctx, deps, userID, paramInt(params["chat"]), "integration.events_preset",
+		map[string]any{"preset": params["preset"]})
 	return reopen(ctx, deps, userID, telegramID, "events", params)
 }
 
@@ -260,6 +281,8 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		if err := deps.Store.SetChatTopic(ctx, paramInt(params["chat"]), topic); err != nil {
 			return err
 		}
+		audit(ctx, deps, userID, paramInt(params["chat"]), "chat.topic",
+			map[string]any{"topic": topicID})
 	case "filter":
 		screen = "filters"
 		if reply == "" || len(reply) > 100 {
@@ -270,6 +293,8 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 			paramInt(params["integration"]), params["kind"], reply); err != nil {
 			return err
 		}
+		audit(ctx, deps, userID, paramInt(params["chat"]), "integration.filter_add",
+			map[string]any{"kind": params["kind"], "pattern": reply})
 	}
 
 	// The prompt and the answer have served their purpose; both go away.

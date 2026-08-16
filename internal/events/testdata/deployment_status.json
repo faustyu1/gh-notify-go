@@ -1,0 +1,6 @@
+{
+  "deployment_status": {"state": "success", "target_url": "https://deploy.acme.dev/1"},
+  "deployment": {"environment": "production"},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,12 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/domain"
 )
+
+type Filter struct {
+	ID    int64
+	Kind  string // author | branch | label | action
+	Value string
+}
 
 // ChatByTelegramID loads one chat; the chat_detail and mute screens need the
 // current mute window and topic in a single query.
@@ -130,10 +137,75 @@ func (s *Store) SetEventEnabled(ctx context.Context, integrationID int64, kind s
 	return nil
 }
 
-type Filter struct {
-	ID    int64
-	Kind  string // author | branch | label
-	Value string
+// IntegrationOwner finds who to tell when delivery to one of their
+// integrations fails terminally.
+func (s *Store) IntegrationOwner(
+	ctx context.Context, integrationID int64,
+) (telegramID int64, repoFullName string, err error) {
+	err = s.pool.QueryRow(ctx, `
+		SELECT u.telegram_id, i.repo_full_name
+		FROM integrations i
+		JOIN users u ON u.id = i.created_by_user_id
+		WHERE i.id = $1`, integrationID).Scan(&telegramID, &repoFullName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, "", fmt.Errorf("integration %d not found", integrationID)
+	}
+	if err != nil {
+		return 0, "", fmt.Errorf("load integration owner: %w", err)
+	}
+	return telegramID, repoFullName, nil
+}
+
+// WriteAudit records an admin action; meta may be nil.
+func (s *Store) WriteAudit(
+	ctx context.Context, actorUserID int64, chatID *int64, action string, meta map[string]any,
+) error {
+	raw, err := json.Marshal(meta)
+	if err != nil {
+		return fmt.Errorf("encode audit meta: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO audit_log (actor_user_id, chat_id, action, meta)
+		VALUES ($1, $2, $3, $4)`, actorUserID, chatID, action, raw)
+	if err != nil {
+		return fmt.Errorf("write audit: %w", err)
+	}
+	return nil
+}
+
+// IntegrationHealth is the per-integration view for the health screen.
+type IntegrationHealth struct {
+	RepoFullName string
+	ChatTitle    string
+	LastEventAt  *time.Time
+	Sent24h      int
+	Failed24h    int
+	BrokenReason *string
+	MutedUntil   *time.Time
+}
+
+func (s *Store) HealthForIntegration(
+	ctx context.Context, integrationID int64,
+) (IntegrationHealth, error) {
+	var h IntegrationHealth
+	err := s.pool.QueryRow(ctx, `
+		SELECT i.repo_full_name, c.title, i.last_event_at, i.broken_reason, c.muted_until,
+		       (SELECT count(*) FROM outbox o WHERE o.integration_id = i.id
+		         AND o.status = 'sent' AND o.created_at > now() - interval '24 hours'),
+		       (SELECT count(*) FROM outbox o WHERE o.integration_id = i.id
+		         AND o.status = 'failed' AND o.created_at > now() - interval '24 hours')
+		FROM integrations i
+		JOIN chats c ON c.id = i.chat_id
+		WHERE i.id = $1`, integrationID).
+		Scan(&h.RepoFullName, &h.ChatTitle, &h.LastEventAt, &h.BrokenReason,
+			&h.MutedUntil, &h.Sent24h, &h.Failed24h)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return IntegrationHealth{}, fmt.Errorf("integration %d not found", integrationID)
+	}
+	if err != nil {
+		return IntegrationHealth{}, fmt.Errorf("load health: %w", err)
+	}
+	return h, nil
 }
 
 func (s *Store) AddFilter(ctx context.Context, integrationID int64, kind, value string) (int64, error) {

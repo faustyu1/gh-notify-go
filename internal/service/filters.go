@@ -13,9 +13,9 @@ type ignoreFilter struct {
 	Pattern string
 }
 
-// eventSubjects extracts the three matchable subjects from a raw payload.
+// eventSubjects extracts the four matchable subjects from a raw payload.
 // Missing subjects are empty strings and never match.
-func eventSubjects(kind string, raw json.RawMessage) (author, branch, label string) {
+func eventSubjects(kind string, raw json.RawMessage) (author, branch, label, action string) {
 	var p struct {
 		Ref      string `json:"ref"`
 		Action   string `json:"action"`
@@ -52,14 +52,13 @@ func eventSubjects(kind string, raw json.RawMessage) (author, branch, label stri
 		branch = p.PullRequest.Head.Ref
 	}
 
-	label = p.Label.Name
-	return author, branch, label
+	return author, branch, p.Label.Name, p.Action
 }
 
 // filterIgnored reports whether any rule suppresses this payload. Matching is
 // case-insensitive; "*" wildcards work, a bare pattern means equality.
 func filterIgnored(kind string, raw json.RawMessage, filters []ignoreFilter) bool {
-	author, branch, label := eventSubjects(kind, raw)
+	author, branch, label, action := eventSubjects(kind, raw)
 
 	for _, f := range filters {
 		var subject string
@@ -70,6 +69,8 @@ func filterIgnored(kind string, raw json.RawMessage, filters []ignoreFilter) boo
 			subject = branch
 		case "label":
 			subject = label
+		case "action":
+			subject = action
 		default:
 			continue
 		}

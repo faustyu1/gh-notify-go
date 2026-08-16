@@ -1,0 +1,5 @@
+{
+  "deployment": {"environment": "production", "url": "https://github.com/acme/app/deployments/1"},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

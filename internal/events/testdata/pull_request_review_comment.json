@@ -1,0 +1,8 @@
+{
+  "action": "created",
+  "number": 128,
+  "comment": {"body": "Use `context.WithTimeout` here.", "html_url": "https://github.com/acme/app/pull/128#discussion_r1", "path": "internal/tg/sender.go"},
+  "pull_request": {"html_url": "https://github.com/acme/app/pull/128", "title": "Add retry to the sender"},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

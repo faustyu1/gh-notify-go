@@ -87,6 +87,42 @@ func TestWorkflowRunGolden(t *testing.T) {
 	assertGolden(t, "workflow_run", "workflow_run")
 }
 
+func TestCommitCommentGolden(t *testing.T) {
+	assertGolden(t, "commit_comment", "commit_comment")
+}
+
+func TestPRReviewCommentGolden(t *testing.T) {
+	assertGolden(t, "pull_request_review_comment", "pull_request_review_comment")
+}
+
+func TestGollumGolden(t *testing.T) {
+	assertGolden(t, "gollum", "gollum")
+}
+
+func TestMemberGolden(t *testing.T) {
+	assertGolden(t, "member", "member")
+}
+
+func TestPublicGolden(t *testing.T) {
+	assertGolden(t, "public", "public")
+}
+
+func TestDeploymentGolden(t *testing.T) {
+	assertGolden(t, "deployment", "deployment")
+}
+
+func TestDeploymentStatusGolden(t *testing.T) {
+	assertGolden(t, "deployment_status", "deployment_status")
+}
+
+func TestCheckSuiteGolden(t *testing.T) {
+	assertGolden(t, "check_suite", "check_suite")
+}
+
+func TestDigestGolden(t *testing.T) {
+	assertGolden(t, "digest", "digest")
+}
+
 func TestPullRequestActionFilter(t *testing.T) {
 	require.True(t, events.Wanted("pull_request", "opened"))
 	require.True(t, events.Wanted("pull_request", "ready_for_review"))

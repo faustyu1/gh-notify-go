@@ -17,11 +17,11 @@ func (f filtersScreen) Name() string { return "filters" }
 var filterKindLabels = []struct {
 	kind  string
 	label string
-	hint  string
 }{
-	{"author", "👤 Автор", "логин, например dependabot[bot] или octo*"},
-	{"branch", "🌿 Ветка", "имя ветки, можно с *, например renovate/*"},
-	{"label", "🏷 Лейбл", "имя лейбла, например wip"},
+	{"author", "👤 Автор"},
+	{"branch", "🌿 Ветка"},
+	{"label", "🏷 Лейбл"},
+	{"action", "⚡ Действие"},
 }
 
 func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) {

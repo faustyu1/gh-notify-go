@@ -21,6 +21,10 @@ import (
 // messageLimit is Telegram's hard cap on message length in characters.
 const messageLimit = 4096
 
+// ErrKicked marks a 403: the bot was kicked, blocked, or cannot write to the
+// chat. Waiting will not help, and the integration should be marked broken.
+var ErrKicked = errors.New("bot cannot write to this chat")
+
 type API interface {
 	SendMessage(ctx context.Context, params *telego.SendMessageParams) (*telego.Message, error)
 }
@@ -100,7 +104,12 @@ func (s *Sender) sendPart(ctx context.Context, job outbox.Job, text string) erro
 func classify(err error) error {
 	permanent, retryAfter := ClassifyError(err)
 	if permanent {
-		return fmt.Errorf("%w: %v", outbox.ErrPermanent, err)
+		wrapped := fmt.Errorf("%w: %v", outbox.ErrPermanent, err)
+		var apiErr *telegoapi.Error
+		if errors.As(err, &apiErr) && apiErr.ErrorCode == 403 {
+			wrapped = errors.Join(wrapped, ErrKicked)
+		}
+		return wrapped
 	}
 	if retryAfter > 0 {
 		// Sleeping here is deliberate and bounded: Telegram told us exactly

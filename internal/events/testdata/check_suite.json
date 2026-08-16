@@ -1,0 +1,6 @@
+{
+  "action": "completed",
+  "check_suite": {"conclusion": "success", "html_url": "https://github.com/acme/app/check-runs/1", "head_branch": "main"},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

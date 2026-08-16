@@ -1,0 +1,4 @@
+{
+  "repository": {"id": 42, "full_name": "acme/app", "html_url": "https://github.com/acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

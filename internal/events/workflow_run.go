@@ -11,11 +11,11 @@ import (
 type workflowRunPayload struct {
 	Action      string `json:"action"`
 	WorkflowRun struct {
-		Name         string `json:"name"`
-		HTMLURL      string `json:"html_url"`
-		Conclusion   string `json:"conclusion"`
-		HeadBranch   string `json:"head_branch"`
-		HeadCommit   struct {
+		Name       string `json:"name"`
+		HTMLURL    string `json:"html_url"`
+		Conclusion string `json:"conclusion"`
+		HeadBranch string `json:"head_branch"`
+		HeadCommit struct {
 			Message string `json:"message"`
 		} `json:"head_commit"`
 	} `json:"workflow_run"`
