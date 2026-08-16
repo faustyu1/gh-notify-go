@@ -1,0 +1,12 @@
+# Terminates TLS and forwards only the two public paths to the bot.
+notify.example.com {
+	handle /gh/webhook {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /github/setup {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		respond "not found" 404
+	}
+}
