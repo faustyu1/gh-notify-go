@@ -19,3 +19,10 @@ type Store interface {
 type Repos interface {
 	ListRepositories(ctx context.Context, installationID int64) ([]ghapp.Repository, error)
 }
+
+type Chats interface {
+	// CandidateChatsForUser, not ChatsForUser: the picker must offer chats
+	// that have no integration yet, otherwise the first connect is
+	// impossible.
+	CandidateChatsForUser(ctx context.Context, userID int64) ([]domain.ChatSummary, error)
+}
