@@ -16,6 +16,7 @@ import (
 type AnchorAPI interface {
 	SendMessage(ctx context.Context, params *telego.SendMessageParams) (*telego.Message, error)
 	EditMessageText(ctx context.Context, params *telego.EditMessageTextParams) (*telego.Message, error)
+	DeleteMessage(ctx context.Context, params *telego.DeleteMessageParams) error
 }
 
 // Anchor keeps one message per user acting as the whole interface. Screens
@@ -67,6 +68,40 @@ func (a *Anchor) Show(ctx context.Context, userID, telegramID int64, view ui.Vie
 		}
 	}
 
+	return a.send(ctx, userID, telegramID, view, markup)
+}
+
+// Reset drops the current anchor and posts a fresh one. A user who deletes the
+// anchor in a private chat only removes their own copy: the message still
+// exists for the bot, so every later edit succeeds against a message nobody can
+// see and the interface looks dead. /start therefore never edits — it starts a
+// new anchor, deleting the old one so no duplicate is left behind for users who
+// still have it.
+func (a *Anchor) Reset(ctx context.Context, userID, telegramID int64, view ui.View) error {
+	markup, err := Keyboard(ctx, a.engine, userID, view)
+	if err != nil {
+		return err
+	}
+
+	messageID, err := a.nav.AnchorMessageID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if messageID != 0 {
+		// Already gone on the user's side, too old to delete, whatever: the
+		// replacement matters, the cleanup does not.
+		_ = a.api.DeleteMessage(ctx, &telego.DeleteMessageParams{
+			ChatID: telego.ChatID{ID: telegramID}, MessageID: messageID,
+		})
+	}
+
+	return a.send(ctx, userID, telegramID, view, markup)
+}
+
+func (a *Anchor) send(
+	ctx context.Context, userID, telegramID int64,
+	view ui.View, markup *telego.InlineKeyboardMarkup,
+) error {
 	sent, err := a.api.SendMessage(ctx, &telego.SendMessageParams{
 		ChatID:             telego.ChatID{ID: telegramID},
 		Text:               view.Text,

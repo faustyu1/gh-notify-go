@@ -86,12 +86,18 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 	if err != nil {
 		// chat_<id> is user-typed text: any chat id at all can arrive here,
 		// including one the sender has nothing to do with.
-		if errors.Is(err, service.ErrNotAdmin) {
-			return denyNotAdmin(ctx, deps, userID, message.From.ID, lang)
+		if !errors.Is(err, service.ErrNotAdmin) {
+			return err
 		}
-		return err
+		view, err = deps.Engine.Open(ctx, userID, message.From.ID, "result",
+			ui.Params{"status": "not_admin"}, lang)
+		if err != nil {
+			return err
+		}
 	}
-	return deps.Anchor.Show(ctx, userID, message.From.ID, view)
+	// /start is the way back from a deleted anchor, so it always posts a new
+	// one rather than editing the message the user can no longer see.
+	return deps.Anchor.Reset(ctx, userID, message.From.ID, view)
 }
 
 // denyNotAdmin lands a refused user on the shared result screen rather than
