@@ -126,23 +126,3 @@ func TestEnqueueStoresGroupKey(t *testing.T) {
 		`SELECT group_key FROM outbox WHERE id = $1`, id).Scan(&groupKey))
 	require.Equal(t, "star:1:octocat", groupKey)
 }
-
-func TestPruneDeliveriesRemovesOldRowsOnly(t *testing.T) {
-	ctx := context.Background()
-	pool, _, _ := fixture(t)
-	queue := outbox.NewQueue(pool, time.Now)
-
-	_, err := pool.Exec(ctx,
-		`INSERT INTO gh_deliveries (delivery_id, received_at)
-		 VALUES ('old', now() - interval '10 days'), ('new', now())`)
-	require.NoError(t, err)
-
-	removed, err := queue.PruneDeliveries(ctx, 7*24*time.Hour)
-	require.NoError(t, err)
-	require.EqualValues(t, 1, removed)
-
-	var remaining string
-	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT delivery_id FROM gh_deliveries`).Scan(&remaining))
-	require.Equal(t, "new", remaining)
-}

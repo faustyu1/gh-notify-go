@@ -1,101 +1,103 @@
 # gh-notify-go
 
-Telegram-бот, который доставляет события GitHub-репозиториев в групповые чаты
-в реальном времени. Управление — через inline-клавиатуры в личных сообщениях,
-единственная команда — `/start`.
+A Telegram bot that delivers GitHub repository events to group chats in real
+time. Everything is driven by inline keyboards in a private chat with the bot;
+`/start` is the only command.
 
-Архитектура: один Go-бинарник. GitHub-webhook проверяет HMAC, дедуплицирует
-по delivery id, находит подходящие интеграции и пишет строки в Postgres-outbox.
-Пул воркеров разбирает outbox, рендерит событие в Telegram-HTML и отправляет
-с ретраями и backoff.
+A live instance runs at [@g0thubbot](https://t.me/g0thubbot) — send it `/start`
+to see the interface before deploying your own.
 
-## События
+Architecture: a single Go binary. The GitHub webhook verifies the HMAC,
+deduplicates by delivery id, finds the matching integrations, and writes rows
+into a Postgres outbox. A pool of workers drains the outbox, renders each event
+as Telegram HTML, and sends it with retries and backoff.
 
-19 типов: `push`, `pull_request`, `pull_request_review`,
+## Events
+
+19 kinds: `push`, `pull_request`, `pull_request_review`,
 `pull_request_review_comment`, `issues`, `issue_comment`, `commit_comment`,
 `release`, `star`, `fork`, `create`, `delete`, `gollum`, `member`, `public`,
 `deployment`, `deployment_status`, `check_suite`, `workflow_run`.
 
-Каждый тип включается и выключается на интеграцию, плюс три пресета: всё,
-только важное, ничего. Фильтры — по автору, ветке, метке и действию.
-`star` приходит один раз на пользователя и репозиторий, навсегда. Когда чат
-упирается в лимит `CHAT_PER_MINUTE`, лишнее сворачивается в дайджест.
+Every kind is toggled per integration, plus three presets: everything, the
+important ones, nothing. Filters match on author, branch, label, and action.
+`star` fires once per user per repository, forever. When a chat hits the
+`CHAT_PER_MINUTE` ceiling, the excess collapses into a digest.
 
-## Права в чате
+## Chat permissions
 
-Подключать репозиторий к чату и менять его настройки может только
-администратор этого чата — права спрашиваются у Telegram в момент действия
-(кэш 1 минута), а не в момент отрисовки экрана. Это касается и просмотра:
-экран чата, экраны событий, фильтров и здоровья закрыты той же проверкой.
+Connecting a repository to a chat and changing its settings is limited to
+administrators of that chat. Rights are asked of Telegram at the moment of the
+action (cached for a minute), not at the moment the screen is drawn. Viewing is
+covered by the same check: the chat screen and the event, filter, and health
+screens are all behind it.
 
-## Переменные окружения
+## Environment variables
 
-| Переменная | Назначение |
+| Variable | Purpose |
 |---|---|
-| `BOT_TOKEN` | токен бота от @BotFather |
-| `BOT_USERNAME` | username бота без `@` |
-| `DATABASE_URL` | строка вида `postgres://…` (SQLite не поддерживается) |
-| `GITHUB_APP_ID`, `GITHUB_SLUG` | id и slug GitHub App |
-| `GITHUB_PRIVATE_KEY_PATH` | путь к `.pem` приватному ключу App |
-| `GITHUB_WEBHOOK_SECRET` | секрет GitHub App webhook |
-| `PUBLIC_URL` | внешний адрес, на который смотрит обратный прокси |
-| `SECRET_KEY` | ключ AES-GCM для шифрования токенов установок — 32 случайных байта в base64, сгенерировать: `openssl rand -base64 32` |
-| `CHAT_PER_MINUTE`, `WORKERS` | тюнинг темпа доставки и числа воркеров |
+| `BOT_TOKEN` | bot token from @BotFather |
+| `BOT_USERNAME` | bot username without `@` |
+| `DATABASE_URL` | `postgres://…` connection string (SQLite is not supported) |
+| `GITHUB_APP_ID`, `GITHUB_SLUG` | GitHub App id and slug |
+| `GITHUB_PRIVATE_KEY_PATH` | path to the App's `.pem` private key |
+| `GITHUB_WEBHOOK_SECRET` | GitHub App webhook secret |
+| `PUBLIC_URL` | external address the reverse proxy points at |
+| `SECRET_KEY` | AES-GCM key encrypting installation tokens — 32 random bytes in base64, generate with `openssl rand -base64 32` |
+| `CHAT_PER_MINUTE`, `WORKERS` | delivery pace and worker count |
 
-Весь конфиг — переменные окружения. Список и значения по умолчанию — в
-`.env.example`: скопируй в `.env`, бинарник прочитает его при старте.
-Переменные настоящего окружения всегда важнее значений из файла.
+Configuration is environment variables only. The full list with defaults lives
+in `.env.example`: copy it to `.env` and the binary reads it at startup. Real
+environment variables always win over the file.
 
-## Создание GitHub App
+## Creating the GitHub App
 
-1. Открой https://github.com/settings/apps/new.
-2. Webhook URL: `https://<host>/gh/webhook`, secret — значение
+1. Open https://github.com/settings/apps/new.
+2. Webhook URL: `https://<host>/gh/webhook`, secret: the value of
    `GITHUB_WEBHOOK_SECRET`.
-3. Setup URL: `https://<host>/github/setup`, галочка «Redirect on update» —
-   включена.
+3. Setup URL: `https://<host>/github/setup`, with "Redirect on update" checked.
 4. Permissions → Repository: **Metadata: read, Contents: read, Issues: read,
    Pull requests: read, Deployments: read, Checks: read, Actions: read**.
-5. Subscribe to events: те из списка выше, которые нужны; как минимум
-   `push`, `pull_request`, `issues`, `installation`.
-6. Скачай приватный ключ `.pem` и положи его в `deploy/secrets/github-app.pem`
-   (права `0600`).
+5. Subscribe to the events you want from the list above; at minimum `push`,
+   `pull_request`, `issues`, `installation`.
+6. Download the `.pem` private key and put it in `deploy/secrets/github-app.pem`
+   with mode `0600`.
 
-Ссылка на установку выдаётся ботом и несёт одноразовый `state`-токен с часовым
-сроком жизни: он и определяет, чья это установка. Установка привязывается к
-пользователю один раз — сменить владельца можно только удалив и поставив App
-заново.
+The install link is handed out by the bot and carries a single-use `state`
+token valid for an hour; that token, and nothing else, decides whose
+installation it is. An installation is bound to a user once — changing the
+owner means removing and re-installing the App.
 
-Для публичного App у GitHub обязательны homepage URL и ссылка на политику
-конфиденциальности — см. [docs/PRIVACY.md](docs/PRIVACY.md), опубликуй её и
-укажи в настройках App. У @BotFather — описание, about и картинка; команда
-одна, `/start`.
+A public App also needs a homepage URL and a privacy policy URL in its GitHub
+settings. With @BotFather, set the description, the about text, and a picture;
+there is one command, `/start`.
 
-## Запуск
+## Running
 
 ```bash
 cd deploy
-cp .env.example .env   # заполнить DATABASE_URL, BOT_TOKEN, …
+cp .env.example .env   # fill in DATABASE_URL, BOT_TOKEN, …
 docker compose up -d
 ```
 
-База по умолчанию внешняя: `DATABASE_URL` указывает на твой кластер,
-`sslmode=require`, если он доступен не только по приватной сети. Схема
-накатывается сама при старте, так что пользователю нужны права на DDL в этой
-базе. Постгрес в комплекте — опция для автономного развёртывания:
+The database is external by default: `DATABASE_URL` points at your own cluster,
+with `sslmode=require` if it is reachable outside a private network. The schema
+migrates itself at startup, so that user needs DDL rights on the database. The
+bundled Postgres is an option for a self-contained deployment:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local-db.yml up -d
 ```
 
-Бот слушает `127.0.0.1:8080`; наружу его публикует обратный прокси
-(пример — `deploy/Caddyfile.example`). `GET /healthz` пингует Postgres и
-отвечает 503, если база недоступна, — на нём же висит healthcheck контейнера.
+The bot listens on `127.0.0.1:8080` and is published by a reverse proxy — see
+`deploy/Caddyfile.example`. `GET /healthz` pings Postgres and answers 503 when
+the database is unreachable; the container healthcheck uses the same endpoint.
 
 ### Cloudflare Tunnel
 
-Альтернатива прокси на публичном IP: `cloudflared` держит исходящее соединение
-до Cloudflare, входящих портов на сервере нет, и адрес сервера не виден ни
-GitHub, ни сканеру. Нужен домен на Cloudflare.
+An alternative to a proxy on a public IP: `cloudflared` holds an outbound
+connection to Cloudflare, the server has no inbound ports, and its address is
+visible to neither GitHub nor a scanner. Requires a domain on Cloudflare.
 
 ```bash
 cloudflared tunnel login
@@ -105,40 +107,49 @@ cp ~/.cloudflared/<TUNNEL-ID>.json deploy/cloudflared/
 cp deploy/cloudflared/config.example.yml deploy/cloudflared/config.yml
 ```
 
-В `config.yml` подставь id туннеля и свой хост; наружу открыты только
-`/gh/webhook` и `/github/setup`, остальное — 404. Затем:
+Put your tunnel id and host into `config.yml`; only `/gh/webhook` and
+`/github/setup` are exposed, everything else is a 404. Then:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
 ```
 
-`PUBLIC_URL` — тот же `https://notify.example.com`, что и в маршруте туннеля.
-Апдейты Telegram и так забираются long polling, так что входящий трафик нужен
-только GitHub-webhook'у, и этот путь целиком закрывает туннель.
+`PUBLIC_URL` is the same `https://notify.example.com` used in the tunnel route.
+Telegram updates arrive over long polling anyway, so the only inbound traffic
+is the GitHub webhook, and the tunnel covers that path entirely.
 
-**Инстанс должен быть один.** Апдейты Telegram забираются long polling, две
-копии начнут драться за `getUpdates`. Миграции при старте берут advisory-lock,
-так что одновременный рестарт базу не поломает, но горизонтально
-масштабировать процесс нельзя.
+**Run exactly one instance.** Telegram updates are fetched by long polling, and
+two copies would fight over `getUpdates`. Migrations take an advisory lock at
+startup, so a simultaneous restart will not corrupt the database, but the
+process cannot be scaled horizontally.
 
-## Языки
+## Data retention
 
-Весь пользовательский текст вынесен в `internal/i18n/locales/*.yaml` и вшит
-в бинарник. Пять локалей: английская (базовая, fallback), русская,
-испанская, немецкая, португальская.
+A janitor sweeps hourly so the tables that only grow stay bounded: delivered
+outbox rows after an hour (the per-chat rate valve looks back sixty seconds),
+failed ones after 7 days, callback keys after 7 days, GitHub delivery ids after
+7 days, and audit records after 90 days. Pending outbox rows are never swept at
+any age. An expired callback key is not an error: the button lands the user on
+the home screen instead.
 
-Язык личного интерфейса берётся из `language_code` Telegram при первом
-`/start` и меняется кнопками на экране «Настройки». Язык уведомлений в чате —
-язык владельца интеграции, поэтому две интеграции в одном чате могут говорить
-на разных языках. Тест в `internal/i18n` следит, что во всех локалях один
-и тот же набор ключей и плейсхолдеров.
+## Languages
 
-## Тесты
+Every user-visible string lives in `internal/i18n/locales/*.yaml` and is
+embedded in the binary. Five locales: English (the base and the fallback),
+Russian, Spanish, German, Portuguese.
+
+The private interface's language comes from Telegram's `language_code` on the
+first `/start` and can be changed from the Settings screen. A notification's
+language is the language of the integration's owner, so two integrations in one
+chat can speak differently. A test in `internal/i18n` enforces that every locale
+carries the same set of keys and placeholders.
+
+## Tests
 
 ```bash
-make test        # один одноразовый Postgres-контейнер на весь прогон
-make test-direct # вариант без Makefile: testcontainers сам поднимает Postgres
+make test        # one throwaway Postgres container for the whole run
+make test-direct # no Makefile: testcontainers boots Postgres itself
 ```
 
-Каждый тест получает отдельную базу внутри общего контейнера, поэтому
-`make test` стартует ровно один Postgres, а не по контейнеру на тест.
+Each test gets its own database inside the shared container, so `make test`
+starts exactly one Postgres rather than one per test.

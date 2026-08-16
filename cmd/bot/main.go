@@ -22,6 +22,7 @@ import (
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
 	"github.com/faustyu/gh-notify-go/internal/httpapi"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
+	"github.com/faustyu/gh-notify-go/internal/janitor"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/secret"
 	"github.com/faustyu/gh-notify-go/internal/service"
@@ -217,6 +218,15 @@ func run(ctx context.Context) error {
 				Run(ctx, time.Second)
 		}(i)
 	}
+
+	// One sweeper regardless of worker count: the tables it touches are shared,
+	// and hourly is often enough for retention measured in hours and days.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		janitor.New(store.Pool(), janitor.DefaultRetention(), time.Now).
+			Run(ctx, time.Hour)
+	}()
 
 	wg.Add(1)
 	go func() {

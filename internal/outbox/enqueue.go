@@ -70,15 +70,3 @@ func (q *Queue) Enqueue(ctx context.Context, row Row) (int64, error) {
 	}
 	return id, nil
 }
-
-// PruneDeliveries drops dedup records past their usefulness. GitHub gives up
-// retrying long before this window, so anything older cannot cause a
-// duplicate.
-func (q *Queue) PruneDeliveries(ctx context.Context, olderThan time.Duration) (int64, error) {
-	tag, err := q.pool.Exec(ctx,
-		`DELETE FROM gh_deliveries WHERE received_at < $1`, q.now().Add(-olderThan))
-	if err != nil {
-		return 0, fmt.Errorf("prune deliveries: %w", err)
-	}
-	return tag.RowsAffected(), nil
-}
