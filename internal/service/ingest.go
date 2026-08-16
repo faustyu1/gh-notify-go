@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/faustyu/gh-notify-go/internal/events"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
@@ -24,19 +23,12 @@ type Result struct {
 }
 
 type Ingest struct {
-	store         *storage.Store
-	queue         *outbox.Queue
-	starDebounce  time.Duration
-	starCooldown  time.Duration
+	store *storage.Store
+	queue *outbox.Queue
 }
 
-func NewIngest(store *storage.Store, queue *outbox.Queue, starDebounce, starCooldown time.Duration) *Ingest {
-	return &Ingest{
-		store:        store,
-		queue:        queue,
-		starDebounce: starDebounce,
-		starCooldown: starCooldown,
-	}
+func NewIngest(store *storage.Store, queue *outbox.Queue) *Ingest {
+	return &Ingest{store: store, queue: queue}
 }
 
 // Handle fans one webhook out to every subscribed chat. It only writes to the
@@ -59,8 +51,8 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 		return result, i.handleInstallation(ctx, env)
 	}
 
-	// star.deleted is a cancellation signal for the debounce window, not a
-	// message; it is consumed before the generic Wanted check.
+	// star has its own one-notification-per-user rule, independent of the
+	// action registry.
 	if env.Kind == "star" {
 		fresh, err := i.queue.MarkDelivered(ctx, env.DeliveryID)
 		if err != nil {
@@ -133,7 +125,7 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 }
 
 type installationPayload struct {
-	Action string `json:"action"`
+	Action       string `json:"action"`
 	Installation struct {
 		ID      int64 `json:"id"`
 		Account struct {
@@ -163,6 +155,13 @@ func (i *Ingest) handleInstallation(ctx context.Context, env ghapp.Envelope) err
 	return nil
 }
 
+// starOutPayload mirrors the star renderer's payload shape.
+type starOutPayload struct {
+	RepoFullName string   `json:"repo_full_name"`
+	Actors       []string `json:"actors"`
+	TotalStars   int      `json:"total_stars"`
+}
+
 type starEnvelope struct {
 	Action string `json:"action"`
 	Sender struct {
@@ -174,10 +173,10 @@ type starEnvelope struct {
 	} `json:"repository"`
 }
 
-// handleStar implements the three anti-spam layers: the net-effect debounce
-// (a pending row per integration, pushed out with every star), the per-actor
-// cooldown, and coalescing (every actor in the window shares one row, so the
-// message says "+N звёзд" instead of N messages).
+// handleStar implements the one rule that matters: a user gets exactly one
+// star notification per repository, ever. The first star is delivered at
+// once; every later star — including the whole star/unstar toggle dance — is
+// silent.
 func (i *Ingest) handleStar(ctx context.Context, env ghapp.Envelope) (Result, error) {
 	var result Result
 
@@ -192,20 +191,11 @@ func (i *Ingest) handleStar(ctx context.Context, env ghapp.Envelope) (Result, er
 	}
 	result.Matched = len(integrations)
 
-	for _, integration := range integrations {
-		if p.Action == "deleted" {
-			if err := i.store.StarPendingRemoveActor(ctx, integration.ID, p.Sender.Login); err != nil {
-				return result, err
-			}
-			if err := i.store.ClearStarNotified(ctx, integration.ID, p.Sender.Login); err != nil {
-				return result, err
-			}
-			continue
-		}
-		if p.Action != "created" {
-			continue
-		}
+	if p.Action != "created" {
+		return result, nil // deleted: nothing to cancel, nothing to say
+	}
 
+	for _, integration := range integrations {
 		enabled, err := i.store.EventEnabled(ctx, integration.ID, "star")
 		if err != nil {
 			return result, err
@@ -215,13 +205,11 @@ func (i *Ingest) handleStar(ctx context.Context, env ghapp.Envelope) (Result, er
 			continue
 		}
 
-		// The slow cycle: unstar in the morning, star in the evening. One
-		// notification per cooldown window per actor is enough.
-		cooldown, err := i.store.StarCooldownActive(ctx, integration.ID, p.Sender.Login, i.starCooldown)
+		notified, err := i.store.StarActorNotified(ctx, integration.ID, p.Sender.Login)
 		if err != nil {
 			return result, err
 		}
-		if cooldown {
+		if notified {
 			result.Skipped++
 			continue
 		}
@@ -229,9 +217,20 @@ func (i *Ingest) handleStar(ctx context.Context, env ghapp.Envelope) (Result, er
 		if err := i.store.MarkStarNotified(ctx, integration.ID, p.Sender.Login); err != nil {
 			return result, err
 		}
-		if err := i.store.StarPendingAddActor(ctx,
-			integration.ChatID, integration.ID, p.Sender.Login,
-			p.Repo.FullName, p.Repo.StargazersCount, i.starDebounce); err != nil {
+		payload, err := json.Marshal(starOutPayload{
+			RepoFullName: p.Repo.FullName,
+			Actors:       []string{p.Sender.Login},
+			TotalStars:   p.Repo.StargazersCount,
+		})
+		if err != nil {
+			return result, fmt.Errorf("encode star: %w", err)
+		}
+		if _, err := i.queue.Enqueue(ctx, outbox.Row{
+			ChatID:        integration.ChatID,
+			IntegrationID: integration.ID,
+			Kind:          "star",
+			Payload:       payload,
+		}); err != nil {
 			return result, err
 		}
 		result.Enqueued++

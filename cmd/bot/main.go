@@ -125,11 +125,11 @@ func run(ctx context.Context) error {
 		screens.NewFilters(store),
 		screens.NewHealth(store),
 		screens.NewStatus(store),
-		screens.NewSettings(cfg.Limits.StarDebounce, cfg.Limits.StarCooldown, cfg.Limits.ChatPerMinute),
+		screens.NewSettings(cfg.Limits.ChatPerMinute),
 	)
 
 	integrator := service.NewIntegrator(store, tg.NewAdminChecker(bot, time.Minute))
-	ingest := service.NewIngest(store, queue, cfg.Limits.StarDebounce, cfg.Limits.StarCooldown)
+	ingest := service.NewIngest(store, queue)
 	installations := service.NewInstallations(store, github)
 
 	mux := http.NewServeMux()

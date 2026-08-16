@@ -2,7 +2,6 @@ package config_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -31,8 +30,6 @@ func TestLoadAppliesDefaults(t *testing.T) {
 
 	require.Equal(t, "123:abc", cfg.Bot.Token)
 	require.Equal(t, int64(777), cfg.GitHub.AppID)
-	require.Equal(t, 60*time.Second, cfg.Limits.StarDebounce)
-	require.Equal(t, 24*time.Hour, cfg.Limits.StarCooldown)
 	require.Equal(t, 20, cfg.Limits.ChatPerMinute)
 	require.Equal(t, 4, cfg.Limits.Workers)
 	require.Equal(t, ":8080", cfg.HTTP.Addr)
@@ -44,7 +41,6 @@ func TestLoadReadsEveryVariable(t *testing.T) {
 	t.Setenv("HTTP_ADDR", ":9090")
 	t.Setenv("WORKERS", "8")
 	t.Setenv("CHAT_PER_MINUTE", "30")
-	t.Setenv("STAR_DEBOUNCE", "90s")
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
@@ -53,7 +49,6 @@ func TestLoadReadsEveryVariable(t *testing.T) {
 	require.Equal(t, ":9090", cfg.HTTP.Addr)
 	require.Equal(t, 8, cfg.Limits.Workers)
 	require.Equal(t, 30, cfg.Limits.ChatPerMinute)
-	require.Equal(t, 90*time.Second, cfg.Limits.StarDebounce)
 }
 
 func TestLoadReportsEveryMissingField(t *testing.T) {
@@ -86,10 +81,7 @@ func TestLoadNamesTheBadVariable(t *testing.T) {
 func TestLoadIgnoresEmptyOptionals(t *testing.T) {
 	setRequired(t)
 	t.Setenv("BOT_OWNER_ID", "")
-	t.Setenv("STAR_COOLDOWN", "")
-
 	cfg, err := config.Load()
 	require.NoError(t, err)
 	require.Zero(t, cfg.Bot.OwnerID)
-	require.Equal(t, 24*time.Hour, cfg.Limits.StarCooldown)
 }

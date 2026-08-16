@@ -37,8 +37,6 @@ type HTTP struct {
 // Limits holds the tunables the spec calls out as estimates rather than
 // constants, so an operator can adjust them without a rebuild.
 type Limits struct {
-	StarDebounce  time.Duration
-	StarCooldown  time.Duration
 	ChatPerMinute int
 	Workers       int
 }
@@ -87,12 +85,6 @@ func applyEnv(cfg *Config) error {
 	if cfg.Limits.Workers, err = envInt("WORKERS"); err != nil {
 		return err
 	}
-	if cfg.Limits.StarDebounce, err = envDuration("STAR_DEBOUNCE"); err != nil {
-		return err
-	}
-	if cfg.Limits.StarCooldown, err = envDuration("STAR_COOLDOWN"); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -126,12 +118,6 @@ func envDuration(key string) (time.Duration, error) {
 }
 
 func applyDefaults(cfg *Config) {
-	if cfg.Limits.StarDebounce == 0 {
-		cfg.Limits.StarDebounce = 60 * time.Second
-	}
-	if cfg.Limits.StarCooldown == 0 {
-		cfg.Limits.StarCooldown = 24 * time.Hour
-	}
 	if cfg.Limits.ChatPerMinute == 0 {
 		cfg.Limits.ChatPerMinute = 20
 	}

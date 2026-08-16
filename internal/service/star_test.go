@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
-	"github.com/faustyu/gh-notify-go/internal/service"
 )
 
 func starEnvelope(action, login, delivery string) ghapp.Envelope {
@@ -24,31 +23,61 @@ func starEnvelope(action, login, delivery string) ghapp.Envelope {
 	return env
 }
 
-func TestStarDebounceCancelsOnUnstar(t *testing.T) {
+func TestStarNotifiesOncePerActorForever(t *testing.T) {
 	ctx := context.Background()
 	ingest, pool, _ := newIngest(t)
 
-	_, err := ingest.Handle(ctx, starEnvelope("created", "octocat", "s-1"))
+	result, err := ingest.Handle(ctx, starEnvelope("created", "octocat", "s-1"))
 	require.NoError(t, err)
+	require.Equal(t, 1, result.Enqueued)
 
-	var pending int
-	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM outbox WHERE event_kind = 'star' AND status = 'pending'`).
-		Scan(&pending))
-	require.Equal(t, 1, pending)
-
-	// The unstar arrives inside the window: the pending row must disappear
-	// and nothing is ever sent.
-	_, err = ingest.Handle(ctx, starEnvelope("deleted", "octocat", "s-2"))
+	// Same actor stars again: silent forever.
+	result, err = ingest.Handle(ctx, starEnvelope("created", "octocat", "s-2"))
 	require.NoError(t, err)
+	require.Zero(t, result.Enqueued)
+	require.Equal(t, 1, result.Skipped)
 
+	// The whole toggle dance — unstar, star — is equally silent.
+	result, err = ingest.Handle(ctx, starEnvelope("deleted", "octocat", "s-3"))
+	require.NoError(t, err)
+	require.Zero(t, result.Enqueued)
+	result, err = ingest.Handle(ctx, starEnvelope("created", "octocat", "s-4"))
+	require.NoError(t, err)
+	require.Zero(t, result.Enqueued)
+
+	var count int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM outbox WHERE event_kind = 'star'`).
-		Scan(&pending))
-	require.Zero(t, pending)
+		`SELECT count(*) FROM outbox WHERE event_kind = 'star'`).Scan(&count))
+	require.Equal(t, 1, count)
 }
 
-func TestStarCoalescesActorsIntoOneRow(t *testing.T) {
+func TestStarIsDeliveredImmediately(t *testing.T) {
+	ctx := context.Background()
+	ingest, pool, _ := newIngest(t)
+
+	_, err := ingest.Handle(ctx, starEnvelope("created", "defunkt", "s-1"))
+	require.NoError(t, err)
+
+	// No debounce window anymore: under the old behaviour this row would sit
+	// at now+60s. A one-minute epsilon covers app/DB clock drift.
+	var ready int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT count(*) FROM outbox WHERE event_kind = 'star'
+		  AND scheduled_at <= now() + interval '1 minute'`).
+		Scan(&ready))
+	require.Equal(t, 1, ready)
+
+	var payload []byte
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT payload FROM outbox WHERE event_kind = 'star' LIMIT 1`).Scan(&payload))
+	var parsed struct {
+		Actors []string `json:"actors"`
+	}
+	require.NoError(t, json.Unmarshal(payload, &parsed))
+	require.Equal(t, []string{"defunkt"}, parsed.Actors)
+}
+
+func TestStarDifferentActorsEachGetOne(t *testing.T) {
 	ctx := context.Background()
 	ingest, pool, _ := newIngest(t)
 
@@ -57,39 +86,11 @@ func TestStarCoalescesActorsIntoOneRow(t *testing.T) {
 	_, err = ingest.Handle(ctx, starEnvelope("created", "defunkt", "s-2"))
 	require.NoError(t, err)
 
-	var rows int
+	var count int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM outbox WHERE event_kind = 'star'`).Scan(&rows))
-	require.Equal(t, 1, rows, "two actors must share one coalesced row")
-
-	var payload []byte
-	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT payload FROM outbox WHERE event_kind = 'star' LIMIT 1`).Scan(&payload))
-
-	var parsed struct {
-		Actors []string `json:"actors"`
-	}
-	require.NoError(t, json.Unmarshal(payload, &parsed))
-	require.ElementsMatch(t, []string{"octocat", "defunkt"}, parsed.Actors)
+		`SELECT count(*) FROM outbox WHERE event_kind = 'star'`).Scan(&count))
+	require.Equal(t, 2, count, "each first-time actor gets their own message")
 }
-
-func TestStarCooldownSilencesRepeatActor(t *testing.T) {
-	ctx := context.Background()
-	ingest, _, integrationID := newIngest(t)
-
-	result, err := ingest.Handle(ctx, starEnvelope("created", "octocat", "s-1"))
-	require.NoError(t, err)
-	require.Equal(t, 1, result.Enqueued)
-
-	// Same actor again inside the 24h cooldown: silently skipped.
-	result, err = ingest.Handle(ctx, starEnvelope("created", "octocat", "s-2"))
-	require.NoError(t, err)
-	require.Equal(t, 1, result.Matched)
-	require.Zero(t, result.Enqueued)
-
-	_ = integrationID
-}
-
 
 func TestFiltersSkipMatchingEvents(t *testing.T) {
 	ctx := context.Background()
@@ -140,5 +141,4 @@ func TestBranchFilterMatchesRef(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Skipped)
 	require.Zero(t, result.Enqueued)
-	require.NotEqual(t, service.Result{}, result)
 }
