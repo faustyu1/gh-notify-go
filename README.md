@@ -20,6 +20,10 @@ inline-клавиатуры в личных сообщениях, единств
 
 Остальные настройки — в `config.toml` (см. `config.example.toml`).
 
+Переменные можно не экспортировать, а положить в `.env` в корне — бинарник
+читает его при старте (пример — `.env.example`). Переменные настоящего
+окружения всегда важнее значений из файла.
+
 ## Создание GitHub App
 
 1. Открой https://github.com/settings/apps/new.
@@ -36,10 +40,7 @@ inline-клавиатуры в личных сообщениях, единств
 
 ```bash
 cd deploy
-export POSTGRES_PASSWORD=…
-export BOT_TOKEN=…
-export GITHUB_WEBHOOK_SECRET=…
-export SECRET_KEY=$(openssl rand -base64 32)
+cp .env.example .env   # заполнить POSTGRES_PASSWORD, BOT_TOKEN, …
 docker compose up -d
 ```
 
@@ -49,8 +50,9 @@ docker compose up -d
 ## Тесты
 
 ```bash
-go test ./...
+make test        # один одноразовый Postgres-контейнер на весь прогон
+make test-direct # вариант без Makefile: testcontainers сам поднимает Postgres
 ```
 
-Тесты хранилища, outbox и сервиса поднимают одноразовый Postgres через
-testcontainers — нужен работающий Docker.
+Каждый тест получает отдельную базу внутри общего контейнера, поэтому
+`make test` стартует ровно один Postgres, а не по контейнеру на тест.

@@ -35,6 +35,10 @@ func main() {
 	configPath := flag.String("config", "config.toml", "path to the config file")
 	flag.Parse()
 
+	if err := config.LoadDotEnv(".env"); err != nil {
+		slog.Warn("read .env", "error", err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(),
 		os.Interrupt, syscall.SIGTERM)
 	defer stop()
