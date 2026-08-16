@@ -1,0 +1,30 @@
+{
+  "ref": "refs/heads/main",
+  "before": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "after": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "compare": "https://github.com/acme/app/compare/aaaaaaa...bbbbbbb",
+  "repository": {
+    "id": 42,
+    "full_name": "acme/app",
+    "html_url": "https://github.com/acme/app"
+  },
+  "pusher": { "name": "octocat" },
+  "sender": { "login": "octocat", "html_url": "https://github.com/octocat" },
+  "commits": [
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "message": "fix: handle <nil> config\n\nlonger body ignored",
+      "url": "https://github.com/acme/app/commit/bbbbbbb",
+      "author": { "name": "Octo Cat", "username": "octocat" }
+    },
+    {
+      "id": "cccccccccccccccccccccccccccccccccccccccc",
+      "message": "chore: bump deps",
+      "url": "https://github.com/acme/app/commit/ccccccc",
+      "author": { "name": "Octo Cat", "username": "octocat" }
+    }
+  ]
+}
