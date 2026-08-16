@@ -28,6 +28,9 @@ type pushPayload struct {
 		ID      string `json:"id"`
 		Message string `json:"message"`
 		URL     string `json:"url"`
+		Author  struct {
+			Username string `json:"username"`
+		} `json:"author"`
 	} `json:"commits"`
 }
 
@@ -54,7 +57,7 @@ func renderPush(raw json.RawMessage) (string, error) {
 	if p.Forced {
 		verb = "форс-запушил"
 	}
-	b.WriteString(fmt.Sprintf("%s %s в %s — %s\n\n",
+	b.WriteString(fmt.Sprintf("%s %s в %s — %s\n",
 		render.Link(p.Sender.HTMLURL, p.Sender.Login),
 		verb,
 		"<code>"+render.Escape(branch)+"</code>",
@@ -65,15 +68,26 @@ func renderPush(raw json.RawMessage) (string, error) {
 	if len(shown) > maxCommitsListed {
 		shown = shown[:maxCommitsListed]
 	}
+	if len(shown) > 0 {
+		b.WriteString("\n<blockquote>")
+	}
 	for _, c := range shown {
 		title, _, _ := strings.Cut(c.Message, "\n")
-		b.WriteString(fmt.Sprintf("• %s %s\n",
+		author := ""
+		if c.Author.Username != "" {
+			author = " <i>(" + render.Escape(c.Author.Username) + ")</i>"
+		}
+		b.WriteString(fmt.Sprintf("\n• %s%s %s",
 			render.Link(c.URL, shortSHA(c.ID)),
+			author,
 			render.Escape(render.Truncate(title, 72)),
 		))
 	}
+	if len(shown) > 0 {
+		b.WriteString("\n</blockquote>")
+	}
 	if omitted := len(p.Commits) - len(shown); omitted > 0 {
-		b.WriteString(fmt.Sprintf("…и ещё %d\n", omitted))
+		b.WriteString(fmt.Sprintf("\n…и ещё %d", omitted))
 	}
 
 	if p.Compare != "" {

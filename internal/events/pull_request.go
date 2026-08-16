@@ -55,17 +55,20 @@ func renderPullRequest(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s %s пул-реквест %s\n\n",
+	b.WriteString(fmt.Sprintf("%s %s пул-реквест %s\n",
 		render.Link(p.PullRequest.User.HTMLURL, p.PullRequest.User.Login),
 		verb,
 		render.Link(p.PullRequest.HTMLURL, fmt.Sprintf("#%d", p.Number)),
 	))
+
+	// The whole summary — title, branch pair, diffstat — reads as one unit,
+	// so it collapses into a quote block like the push commit list.
+	b.WriteString("\n<blockquote>\n")
 	b.WriteString("<b>" + render.Escape(render.Truncate(p.PullRequest.Title, 120)) + "</b>\n")
 	b.WriteString(fmt.Sprintf("<code>%s</code> → <code>%s</code>\n",
 		render.Escape(p.PullRequest.Head.Ref),
 		render.Escape(p.PullRequest.Base.Ref),
 	))
-
 	if p.PullRequest.ChangedFiles > 0 {
 		b.WriteString(fmt.Sprintf("%s +%d −%d в %d файлах\n",
 			render.Emoji(render.EmojiFile, "📁"),
@@ -74,6 +77,8 @@ func renderPullRequest(raw json.RawMessage) (string, error) {
 			p.PullRequest.ChangedFiles,
 		))
 	}
+	b.WriteString("</blockquote>")
+
 	if body := strings.TrimSpace(p.PullRequest.Body); body != "" {
 		b.WriteString("\n" + render.Markdown(body, 500))
 	}
