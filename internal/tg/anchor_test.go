@@ -2,6 +2,7 @@ package tg_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/mymmrac/telego"
@@ -109,6 +110,43 @@ func TestShowFallsBackToSendWhenAnchorIsGone(t *testing.T) {
 	require.Len(t, api.edited, 1)
 	require.Len(t, api.sent, 1)
 	require.Equal(t, 101, nav.anchor)
+}
+
+func TestShowFallsBackToSendOnAnyRefusedEdit(t *testing.T) {
+	// Telegram reports a deleted anchor with more than one wording, and the
+	// interface must survive every one of them.
+	for _, description := range []string{
+		"Bad Request: message to edit not found",
+		"Bad Request: message can't be edited",
+		"Bad Request: MESSAGE_ID_INVALID",
+	} {
+		t.Run(description, func(t *testing.T) {
+			api := &fakeAnchorAPI{editErr: &telegoapi.Error{
+				ErrorCode: 400, Description: description,
+			}}
+			nav := newMemNav()
+			nav.anchor = 42
+			anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
+
+			require.NoError(t, anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"}))
+			require.Len(t, api.sent, 1)
+			require.Equal(t, 101, nav.anchor)
+		})
+	}
+}
+
+func TestShowSurfacesNonAPIEditFailures(t *testing.T) {
+	// A network failure says nothing about the anchor's fate; sending a second
+	// message would duplicate the interface, so the error must propagate.
+	api := &fakeAnchorAPI{editErr: errors.New("dial tcp: connection refused")}
+	nav := newMemNav()
+	nav.anchor = 42
+	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
+
+	err := anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"})
+	require.Error(t, err)
+	require.Empty(t, api.sent)
+	require.Equal(t, 42, nav.anchor, "the anchor id survives a failed edit")
 }
 
 func TestShowIgnoresUnchangedContent(t *testing.T) {

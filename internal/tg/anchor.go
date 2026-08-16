@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/mymmrac/telego"
@@ -57,7 +58,11 @@ func (a *Anchor) Show(ctx context.Context, userID, telegramID int64, view ui.Vie
 		if isNotModified(err) {
 			return nil
 		}
-		if !isMessageGone(err) {
+		// Any other refusal means this message id is unusable — the user
+		// deleted the anchor, it aged out, Telegram worded the reason
+		// differently. Whatever the wording, the interface must not go dead:
+		// fall through and post a fresh anchor.
+		if !isEditRefused(err) {
 			return fmt.Errorf("edit anchor: %w", err)
 		}
 	}
@@ -110,9 +115,15 @@ func isNotModified(err error) bool {
 	return descriptionContains(err, "message is not modified")
 }
 
-func isMessageGone(err error) bool {
-	return descriptionContains(err, "message to edit not found") ||
-		descriptionContains(err, "message can't be edited")
+// isEditRefused reports that Telegram rejected the edit itself, rather than
+// the request failing to reach it. Listing the descriptions was too narrow: a
+// deleted anchor comes back as "message to edit not found" or as
+// "MESSAGE_ID_INVALID" depending on the case, and only the first was covered,
+// so deleting the anchor left the user with no interface at all. A transport
+// failure carries no API error and still surfaces.
+func isEditRefused(err error) bool {
+	var apiErr *telegoapi.Error
+	return errors.As(err, &apiErr) && apiErr.ErrorCode == http.StatusBadRequest
 }
 
 func descriptionContains(err error, needle string) bool {
