@@ -91,6 +91,31 @@ docker compose -f docker-compose.yml -f docker-compose.local-db.yml up -d
 (пример — `deploy/Caddyfile.example`). `GET /healthz` пингует Postgres и
 отвечает 503, если база недоступна, — на нём же висит healthcheck контейнера.
 
+### Cloudflare Tunnel
+
+Альтернатива прокси на публичном IP: `cloudflared` держит исходящее соединение
+до Cloudflare, входящих портов на сервере нет, и адрес сервера не виден ни
+GitHub, ни сканеру. Нужен домен на Cloudflare.
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create ghnotify
+cloudflared tunnel route dns ghnotify notify.example.com
+cp ~/.cloudflared/<TUNNEL-ID>.json deploy/cloudflared/
+cp deploy/cloudflared/config.example.yml deploy/cloudflared/config.yml
+```
+
+В `config.yml` подставь id туннеля и свой хост; наружу открыты только
+`/gh/webhook` и `/github/setup`, остальное — 404. Затем:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
+```
+
+`PUBLIC_URL` — тот же `https://notify.example.com`, что и в маршруте туннеля.
+Апдейты Telegram и так забираются long polling, так что входящий трафик нужен
+только GitHub-webhook'у, и этот путь целиком закрывает туннель.
+
 **Инстанс должен быть один.** Апдейты Telegram забираются long polling, две
 копии начнут драться за `getUpdates`. Миграции при старте берут advisory-lock,
 так что одновременный рестарт базу не поломает, но горизонтально
