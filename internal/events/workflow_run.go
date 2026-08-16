@@ -52,11 +52,16 @@ func renderWorkflowRun(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("CI «%s» %s\n", render.Escape(p.WorkflowRun.Name), verdict))
-	b.WriteString(fmt.Sprintf("%s · <code>%s</code>\n\n",
-		render.Link(p.WorkflowRun.HTMLURL, render.Truncate(title, 72)),
+	b.WriteString(fmt.Sprintf("Workflow «%s» — %s · <code>%s</code>\n",
+		render.Escape(p.WorkflowRun.Name), verdict,
 		render.Escape(p.WorkflowRun.HeadBranch),
 	))
-	b.WriteString(render.Link(p.WorkflowRun.HTMLURL, "Подробнее"))
+	b.WriteString(fmt.Sprintf("By %s\n\n",
+		render.Link(p.Sender.HTMLURL, "@"+p.Sender.Login),
+	))
+	b.WriteString(fmt.Sprintf("%s\n%s",
+		render.Link(p.WorkflowRun.HTMLURL, render.Truncate(title, 72)),
+		render.Link(p.WorkflowRun.HTMLURL, "View run"),
+	))
 	return b.String(), nil
 }

@@ -1,0 +1,252 @@
+# Русская локаль. Формулировки совпадают с текстами, которые были в коде до
+# появления i18n, чтобы существующие пользователи не увидели изменений.
+
+lang:
+  name: Русский
+
+nav:
+  back: "◁ Назад"
+
+format:
+  datetime: "02.01 15:04"
+
+btn:
+  connect_github: "🔗 Подключить GitHub"
+  repos: "🏢 Репозитории"
+  chats: "💬 Чаты"
+  status: "📊 Статус"
+  settings: "⚙️ Настройки"
+  add_to_chat: "➕ Добавить в чат"
+  home: "🏠 В начало"
+  more_accounts: "➕ Ещё аккаунт"
+  configure_access: "🔗 Настроить доступ"
+  prev_page: "◁ Раньше"
+  next_page: "Вперёд ▷"
+  connect_to_chat: "💬 Подключить к чату"
+  open_github: "🔗 Открыть на GitHub"
+  install_app: "🔗 Установить GitHub App"
+  installed: "🔄 Я установил"
+  events: "🔔 События"
+  health: "🩺 Здоровье"
+  filters: "🚫 Фильтры"
+  disconnect: "🗑 Отключить"
+  set_topic: "🏷 Указать топик"
+  unmute: "🔔 Снять"
+  configure: "⚙️ Настроить"
+  add_to_group: "➕ Добавить в группу"
+
+home:
+  greeting: "Подключи GitHub, и события репозиториев будут приходить в твои чаты."
+  accounts: "Аккаунтов"
+  repos: "Репозиториев"
+  chats: "Чатов"
+
+accounts:
+  empty: "Пока нет подключённых аккаунтов GitHub."
+  title: "Аккаунты GitHub"
+  hint: "Выбери, где лежит репозиторий."
+
+repos:
+  empty: "Не выбрано ни одного репозитория для этой установки.\n\nОткрой настройки GitHub App и добавь репозитории."
+  count: "Репозиториев: {n}"
+  page: "   ·   стр. {n}/{total}"
+
+repo_detail:
+  hint: "Выбери чат, куда присылать события этого репозитория."
+
+install:
+  body: "Нажми кнопку ниже, выбери аккаунт или организацию и отметь нужные репозитории. После установки GitHub вернёт тебя обратно сюда."
+
+chat_picker:
+  empty: "Бот пока не добавлен ни в один твой чат.\n\nДобавь его в группу, и чат появится здесь."
+  title: "Куда присылать"
+
+add_to_chat:
+  body: "Нажми кнопку и выбери группу — бот появится там и сразу пришлёт кнопку настройки.\n\nПосле этого группа появится в списке при подключении репозитория."
+
+result:
+  ok: "<b>Готово</b>\n\n{name} подключён.\nСобытия уже идут — настроить их можно в разделе «Чаты»."
+  not_admin: "<b>Нужны права администратора</b>\n\nПодключать репозитории к чату может только его администратор."
+  duplicate: "<b>Уже подключено</b>\n\n{name} уже присылает события в этот чат."
+  error: "<b>Не получилось</b>\n\nПопробуй ещё раз чуть позже."
+
+chats:
+  empty: "Пока нет чатов с подключёнными репозиториями."
+  title: "Чаты"
+  hint: "Чат с подключёнными репозиториями можно замьютить или направить в топик."
+  entry: "💬 {title} · {n}"
+
+chat_detail:
+  muted_until: "🔇 Замьютен до {time}"
+  active: "Уведомления активны"
+  topic: "Топик: <code>{id}</code>"
+  mute: "🔇 {h}ч"
+  language: "Язык"
+
+integration_detail:
+  hint: "Что настроить для этого репозитория?"
+
+events:
+  title: "События"
+  hint: "Пресеты сверху, отдельные типы ниже."
+  preset_all: "✅ Всё"
+  preset_important: "⭐ Только важное"
+  preset_none: "❌ Ничего"
+
+filters:
+  title: "Фильтры"
+  empty: "Пока ничего не игнорируется."
+  hint: "Совпавшие события не присылаются:"
+  entry: "✖ {kind}: {value}"
+  add: "+ {label}"
+  kind:
+    author: "👤 Автор"
+    branch: "🌿 Ветка"
+    label: "🏷 Лейбл"
+    action: "⚡ Действие"
+
+health:
+  title: "Здоровье"
+  broken: "⚠️ <b>Сломана:</b> {reason}"
+  muted_until: "🔇 Чат замьютен до {time}"
+  last_event: "🕐 Последнее событие: {time}"
+  no_events: "🕐 Событий ещё не было"
+  sent24h: "✅ Доставлено за 24ч: <b>{n}</b>"
+  failed24h: "❌ Не доставлено: <b>{n}</b>"
+
+status:
+  title: "Статус"
+  summary: "Аккаунтов: <b>{accounts}</b> · репозиториев: <b>{repos}</b> · чатов: <b>{chats}</b>"
+  delivered24h: "За 24 часа доставлено: <b>{n}</b>"
+  failed24h: "Не доставлено: <b>{n}</b> — смотри раздел «Чаты»"
+
+settings:
+  title: "Настройки"
+  stars_title: "Анти-спам звёзд:"
+  stars_window: "· окно накопления — <b>{window}</b>"
+  stars_cooldown: "· кулдаун на автора — <b>{hours}{unit}</b>"
+  stars_merge: "· несколько авторов складываются в одно сообщение"
+  rate_limit: "Лимит отправки: <b>{n}</b> сообщений в минуту на чат"
+  language: "Язык"
+  hours_short: "ч"
+
+placeholder:
+  body: "Этот раздел ещё в работе."
+
+prompt:
+  topic: "Пришли id топика форума (число). 0 — присылать в общий чат."
+  filter: "Пришли шаблон для фильтра («{kind}»). Можно использовать *."
+  topic_invalid: "⚠️ Это не число — топик не изменён."
+  filter_invalid: "⚠️ Шаблон пустой или слишком длинный."
+
+greeting:
+  body: "Настройка — в личных сообщениях."
+  button: "⚙️ Настроить"
+
+delivery:
+  failed_title: "Доставка не удалась"
+  failed_line: "{repo} → чат {chat}"
+
+ev:
+  push:
+    pushed: "{user} запушил в {branch} — {commits}"
+    forced: "{user} форс-запушил в {branch} — {commits}"
+    commits:
+      one: "{n} коммит"
+      few: "{n} коммита"
+      many: "{n} коммитов"
+    omitted: "…и ещё {n}"
+    commit_line: "• {sha} {author} {title}"
+    commit_author: "<i>({user})</i>"
+    compare: "Посмотреть изменения"
+
+  pull_request:
+    merged: "{user} вмержил пул-реквест {link}"
+    closed: "{user} закрыл пул-реквест {link}"
+    reopened: "{user} переоткрыл пул-реквест {link}"
+    ready_for_review: "{user} снял черновик с пул-реквеста {link}"
+    draft: "{user} открыл черновик пул-реквеста {link}"
+    opened: "{user} открыл пул-реквест {link}"
+    ref_pair: "<code>{head}</code> → <code>{base}</code>"
+    diffstat:
+      one: "📁 +{additions} −{deletions} в {files} файле"
+      few: "📁 +{additions} −{deletions} в {files} файлах"
+      many: "📁 +{additions} −{deletions} в {files} файлах"
+
+  issues:
+    opened: "{user} открыл issue {link}"
+    closed: "{user} закрыл issue {link}"
+    reopened: "{user} переоткрыл issue {link}"
+    ref: "issue"
+
+  issue_comment:
+    line: "{user} прокомментировал issue {link}"
+
+  pull_request_review:
+    approved: "{user} апрувнул пул-реквест {link}"
+    changes_requested: "{user} запросил правки в пул-реквесте {link}"
+    commented: "{user} прокомментировал пул-реквест {link}"
+
+  pull_request_review_comment:
+    line: "{user} оставил комментарий к коду в PR {link}"
+
+  commit_comment:
+    line: "{user} прокомментировал коммит {sha}"
+
+  release:
+    line: "{user} выпустил {link}"
+    prerelease: "pre-release"
+
+  workflow_run:
+    line: "CI «{name}» {verdict}"
+    branch_line: "{commit} · <code>{branch}</code>"
+
+  check_suite:
+    line: "Чек-сьют {verdict} · <code>{branch}</code>"
+
+  verdict:
+    finished: "завершился"
+    success: "прошёл"
+    failure: "упал ({conclusion})"
+
+  fork:
+    line: "{user} форкнул в {link}"
+
+  member:
+    added: "{user} добавил соавтора {member}"
+    removed: "{user} исключил соавтора {member}"
+
+  gollum:
+    line: "{user} обновил вики:"
+    page: "{name} ({action})"
+
+  public:
+    now_public: "теперь открытый!"
+    opened: "{user} открыл репозиторий"
+
+  ref:
+    created: "{user} создал {ref}"
+    deleted: "{user} удалил {ref}"
+    branch: "ветка"
+    tag: "тег"
+
+  deployment:
+    started: "{user} начал деплой в <code>{env}</code>"
+
+  deployment_status:
+    success: "задеплоено в <code>{env}</code>"
+    failure: "деплой в <code>{env}</code> упал"
+
+  star:
+    single: "{user} поставил звезду"
+    multi:
+      one: "+{n} звезда: {actors}"
+      few: "+{n} звезды: {actors}"
+      many: "+{n} звёзд: {actors}"
+    total: "Всего: <b>{n}</b> ⭐"
+
+  digest:
+    line: "📋 Слишком много событий за минуту — ещё {n}: {list}"
+
+  detail: "Подробнее"
+  report: "Отчёт"

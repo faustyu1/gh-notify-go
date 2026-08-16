@@ -1,0 +1,259 @@
+# Base locale: every user-visible string of the bot. The other locales must
+# keep the exact same key set — a test enforces that.
+
+# The language's own name, shown in the language pickers.
+lang:
+  name: English
+
+nav:
+  back: "◁ Back"
+
+format:
+  # Go time layout for short timestamps in messages.
+  datetime: "Jan 2, 15:04"
+
+# Buttons reused across screens. Plain emoji travel with the label because
+# Telegram button captions cannot carry entities.
+btn:
+  connect_github: "🔗 Connect GitHub"
+  repos: "🏢 Repositories"
+  chats: "💬 Chats"
+  status: "📊 Status"
+  settings: "⚙️ Settings"
+  add_to_chat: "➕ Add to chat"
+  home: "🏠 Home"
+  more_accounts: "➕ Another account"
+  configure_access: "🔗 Configure access"
+  prev_page: "◁ Newer"
+  next_page: "Older ▷"
+  connect_to_chat: "💬 Connect to chat"
+  open_github: "🔗 Open on GitHub"
+  install_app: "🔗 Install GitHub App"
+  installed: "🔄 I've installed it"
+  events: "🔔 Events"
+  health: "🩺 Health"
+  filters: "🚫 Filters"
+  disconnect: "🗑 Disconnect"
+  set_topic: "🏷 Set topic"
+  unmute: "🔔 Unmute"
+  configure: "⚙️ Configure"
+  add_to_group: "➕ Add to group"
+
+home:
+  greeting: "Connect GitHub and repository events will arrive in your chats."
+  accounts: "Accounts"
+  repos: "Repositories"
+  chats: "Chats"
+
+accounts:
+  empty: "No GitHub accounts are connected yet."
+  title: "GitHub accounts"
+  hint: "Pick where the repository lives."
+
+repos:
+  empty: "No repositories are selected for this installation.\n\nOpen the GitHub App settings and add repositories."
+  count: "Repositories: {n}"
+  page: "   ·   page {n}/{total}"
+
+repo_detail:
+  hint: "Pick the chat this repository's events should go to."
+
+install:
+  body: "Tap the button below, pick an account or organization, and mark the repositories you need. GitHub will bring you back here after the install."
+
+chat_picker:
+  empty: "The bot has not been added to any of your chats yet.\n\nAdd it to a group and the chat will show up here."
+  title: "Where to deliver"
+
+add_to_chat:
+  body: "Tap the button and pick a group — the bot will appear there and immediately send a settings button.\n\nAfter that the group shows up in the list when you connect a repository."
+
+result:
+  ok: "<b>Done</b>\n\n{name} is connected.\nEvents are already flowing — you can tune them in the “Chats” section."
+  not_admin: "<b>Administrator rights required</b>\n\nOnly a chat administrator can connect repositories to it."
+  duplicate: "<b>Already connected</b>\n\n{name} already sends events to this chat."
+  error: "<b>Didn't work</b>\n\nTry again a little later."
+
+chats:
+  empty: "No chats with connected repositories yet."
+  title: "Chats"
+  hint: "A chat with connected repositories can be muted or pointed at a topic."
+  entry: "💬 {title} · {n}"
+
+chat_detail:
+  muted_until: "Muted until {time}"
+  active: "Notifications are on"
+  topic: "Topic: <code>{id}</code>"
+  mute: "🔇 {h}h"
+  language: "Language"
+
+integration_detail:
+  hint: "What would you like to set up for this repository?"
+
+events:
+  title: "Events"
+  hint: "Presets on top, individual types below."
+  preset_all: "✅ Everything"
+  preset_important: "⭐ Important only"
+  preset_none: "❌ Nothing"
+
+filters:
+  title: "Filters"
+  empty: "Nothing is ignored yet."
+  hint: "Matching events are not sent:"
+  entry: "✖ {kind}: {value}"
+  add: "+ {label}"
+  kind:
+    author: "👤 Author"
+    branch: "🌿 Branch"
+    label: "🏷 Label"
+    action: "⚡ Action"
+
+health:
+  title: "Health"
+  broken: "<b>Broken:</b> {reason}"
+  muted_until: "🔇 Chat is muted until {time}"
+  last_event: "Last event: {time}"
+  no_events: "No events yet"
+  sent24h: "✅ Delivered in 24h: <b>{n}</b>"
+  failed24h: "❌ Not delivered: <b>{n}</b>"
+
+status:
+  title: "Status"
+  summary: "Accounts: <b>{accounts}</b> · repositories: <b>{repos}</b> · chats: <b>{chats}</b>"
+  delivered24h: "Delivered in 24h: <b>{n}</b>"
+  failed24h: "Not delivered: <b>{n}</b> — see the “Chats” section"
+
+settings:
+  title: "Settings"
+  stars_title: "Star anti-spam:"
+  stars_window: "· debounce window — <b>{window}</b>"
+  stars_cooldown: "· per-author cooldown — <b>{hours}{unit}</b>"
+  stars_merge: "· several authors collapse into one message"
+  rate_limit: "Send limit: <b>{n}</b> messages per minute per chat"
+  language: "Language"
+  hours_short: "h"
+
+placeholder:
+  body: "This section is still in the works."
+
+# The DM side of the bot: ForceReply prompts and one-off notices.
+prompt:
+  topic: "Send the forum topic id (a number). 0 delivers to the general chat."
+  filter: "Send a pattern for the filter ({kind}). You may use *."
+  topic_invalid: "⚠️ That is not a number — the topic was not changed."
+  filter_invalid: "⚠️ The pattern is empty or too long."
+
+greeting:
+  # Sent once when the bot lands in a group.
+  body: "Setup happens in a private chat."
+  button: "⚙️ Configure"
+
+delivery:
+  # DM to the integration owner when a job fails permanently.
+  failed_title: "Delivery failed"
+  failed_line: "{repo} → chat {chat}"
+
+# ── Event notifications ─────────────────────────────────────────────────────
+# Headlines are whole sentences, because word order differs between languages.
+
+ev:
+  push:
+    pushed: "{user} pushed to {branch} — {commits}"
+    forced: "{user} force-pushed to {branch} — {commits}"
+    commits:
+      one: "{n} commit"
+      other: "{n} commits"
+    omitted: "…and {n} more"
+    commit_line: "• {sha} {author} {title}"
+    commit_author: "<i>({user})</i>"
+    compare: "View changes"
+
+  pull_request:
+    merged: "{user} merged pull request {link}"
+    closed: "{user} closed pull request {link}"
+    reopened: "{user} reopened pull request {link}"
+    ready_for_review: "{user} marked pull request {link} ready for review"
+    draft: "{user} opened a draft pull request {link}"
+    opened: "{user} opened pull request {link}"
+    ref_pair: "<code>{head}</code> → <code>{base}</code>"
+    diffstat:
+      one: "📁 +{additions} −{deletions} in {files} file"
+      other: "📁 +{additions} −{deletions} in {files} files"
+
+  issues:
+    opened: "{user} opened issue {link}"
+    closed: "{user} closed issue {link}"
+    reopened: "{user} reopened issue {link}"
+    ref: "issue"
+
+  issue_comment:
+    line: "{user} commented on issue {link}"
+
+  pull_request_review:
+    approved: "{user} approved pull request {link}"
+    changes_requested: "{user} requested changes on pull request {link}"
+    commented: "{user} commented on pull request {link}"
+
+  pull_request_review_comment:
+    line: "{user} left a review comment on pull request {link}"
+
+  commit_comment:
+    line: "{user} commented on commit {sha}"
+
+  release:
+    line: "{user} released {link}"
+    prerelease: "pre-release"
+
+  workflow_run:
+    line: "CI «{name}» {verdict}"
+    branch_line: "{commit} · <code>{branch}</code>"
+
+  check_suite:
+    line: "Check suite {verdict} · <code>{branch}</code>"
+
+  verdict:
+    finished: "finished"
+    success: "passed"
+    failure: "failed ({conclusion})"
+
+  fork:
+    line: "{user} forked to {link}"
+
+  member:
+    added: "{user} added collaborator {member}"
+    removed: "{user} removed collaborator {member}"
+
+  gollum:
+    line: "{user} updated the wiki:"
+    page: "{name} ({action})"
+
+  public:
+    now_public: "is now public!"
+    opened: "{user} made the repository public"
+
+  ref:
+    created: "{user} created {ref}"
+    deleted: "{user} deleted {ref}"
+    branch: "branch"
+    tag: "tag"
+
+  deployment:
+    started: "{user} started a deployment to <code>{env}</code>"
+
+  deployment_status:
+    success: "deployed to <code>{env}</code>"
+    failure: "deployment to <code>{env}</code> failed"
+
+  star:
+    single: "{user} starred the repository"
+    multi:
+      one: "+{n} star: {actors}"
+      other: "+{n} stars: {actors}"
+    total: "Total: <b>{n}</b> ⭐"
+
+  digest:
+    line: "📋 Too many events in one minute — {n} more: {list}"
+
+  detail: "Details"
+  report: "Report"
