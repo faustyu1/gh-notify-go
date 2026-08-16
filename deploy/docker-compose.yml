@@ -1,27 +1,13 @@
 services:
-  db:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: gh
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ghnotify
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gh -d ghnotify"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   bot:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://gh:${POSTGRES_PASSWORD}@db:5432/ghnotify?sslmode=disable
+      # Points at your Postgres cluster; sslmode=require unless it is reachable
+      # only over a private network. For a bundled database instead, add
+      # docker-compose.local-db.yml — see deploy/.env.example.
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       BOT_TOKEN: ${BOT_TOKEN:?set BOT_TOKEN}
       BOT_USERNAME: ${BOT_USERNAME:?set BOT_USERNAME}
       GITHUB_APP_ID: ${GITHUB_APP_ID:?set GITHUB_APP_ID}
@@ -47,6 +33,3 @@ services:
 secrets:
   github_app_key:
     file: ./secrets/github-app.pem
-
-volumes:
-  pgdata:

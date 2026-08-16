@@ -74,8 +74,17 @@ Telegram-бот, который доставляет события GitHub-ре�
 
 ```bash
 cd deploy
-cp .env.example .env   # заполнить POSTGRES_PASSWORD, BOT_TOKEN, …
+cp .env.example .env   # заполнить DATABASE_URL, BOT_TOKEN, …
 docker compose up -d
+```
+
+База по умолчанию внешняя: `DATABASE_URL` указывает на твой кластер,
+`sslmode=require`, если он доступен не только по приватной сети. Схема
+накатывается сама при старте, так что пользователю нужны права на DDL в этой
+базе. Постгрес в комплекте — опция для автономного развёртывания:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-db.yml up -d
 ```
 
 Бот слушает `127.0.0.1:8080`; наружу его публикует обратный прокси

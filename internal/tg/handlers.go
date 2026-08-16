@@ -53,6 +53,17 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 	if message.From == nil {
 		return nil
 	}
+
+	// The command itself is not content: every deep link tap posts a visible
+	// "/start chat_-100…" into the DM, and the whole interface is one anchor
+	// message that gets edited in place. Bots may delete incoming messages in
+	// private chats, so the command goes away and the chat stays clean.
+	if message.Chat.Type == telego.ChatTypePrivate {
+		_ = ctx.Bot().DeleteMessage(ctx, &telego.DeleteMessageParams{
+			ChatID: telego.ChatID{ID: message.Chat.ID}, MessageID: message.MessageID,
+		})
+	}
+
 	userID, lang, err := deps.Store.UpsertUser(ctx, message.From.ID,
 		i18n.Normalize(message.From.LanguageCode))
 	if err != nil {
