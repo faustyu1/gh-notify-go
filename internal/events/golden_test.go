@@ -42,3 +42,28 @@ func assertGolden(t *testing.T, kind events.Kind, name string) {
 func TestPushGolden(t *testing.T) {
 	assertGolden(t, "push", "push")
 }
+
+func TestPullRequestOpenedGolden(t *testing.T) {
+	assertGolden(t, "pull_request", "pull_request")
+}
+
+func TestPullRequestMergedGolden(t *testing.T) {
+	assertGolden(t, "pull_request", "pull_request_merged")
+}
+
+func TestIssuesGolden(t *testing.T) {
+	assertGolden(t, "issues", "issues")
+}
+
+func TestPullRequestActionFilter(t *testing.T) {
+	require.True(t, events.Wanted("pull_request", "opened"))
+	require.True(t, events.Wanted("pull_request", "ready_for_review"))
+	// Label churn is the single noisiest PR action; it must not be sent.
+	require.False(t, events.Wanted("pull_request", "labeled"))
+	require.False(t, events.Wanted("pull_request", "synchronize"))
+}
+
+func TestIssuesActionFilter(t *testing.T) {
+	require.True(t, events.Wanted("issues", "opened"))
+	require.False(t, events.Wanted("issues", "labeled"))
+}

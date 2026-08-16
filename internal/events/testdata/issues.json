@@ -1,0 +1,12 @@
+{
+  "action": "opened",
+  "issue": {
+    "number": 9,
+    "html_url": "https://github.com/acme/app/issues/9",
+    "title": "Crash on empty config",
+    "body": "Steps to reproduce…",
+    "user": { "login": "octocat", "html_url": "https://github.com/octocat" }
+  },
+  "repository": { "id": 42, "full_name": "acme/app" },
+  "sender": { "login": "octocat", "html_url": "https://github.com/octocat" }
+}
