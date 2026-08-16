@@ -1,0 +1,7 @@
+{
+  "action": "created",
+  "issue": {"number": 9, "html_url": "https://github.com/acme/app/issues/9", "title": "Crash on empty config"},
+  "comment": {"body": "Still reproduces on 1.2.3."},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

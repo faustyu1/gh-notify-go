@@ -85,3 +85,21 @@ func Kinds() []Kind {
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }
+
+// ImportantKinds is what the «Только важное» preset keeps on.
+var ImportantKinds = map[Kind]bool{
+	"pull_request": true, "issues": true, "issue_comment": true,
+	"pull_request_review": true, "release": true, "workflow_run": true,
+}
+
+// PresetEnabled reports whether a named preset keeps a kind enabled.
+func PresetEnabled(preset string, kind Kind) bool {
+	switch preset {
+	case "none":
+		return false
+	case "important":
+		return ImportantKinds[kind]
+	default: // "all" and anything unknown
+		return true
+	}
+}

@@ -5,6 +5,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -14,6 +15,7 @@ import (
 type Store struct {
 	pool *pgxpool.Pool
 	box  *secret.Box
+	now  func() time.Time
 }
 
 func New(ctx context.Context, dbURL string, box *secret.Box) (*Store, error) {
@@ -25,7 +27,7 @@ func New(ctx context.Context, dbURL string, box *secret.Box) (*Store, error) {
 		pool.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
-	return &Store{pool: pool, box: box}, nil
+	return &Store{pool: pool, box: box, now: time.Now}, nil
 }
 
 func (s *Store) Close() { s.pool.Close() }

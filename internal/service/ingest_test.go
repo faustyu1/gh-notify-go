@@ -40,7 +40,7 @@ func newIngest(t *testing.T) (*service.Ingest, *pgxpool.Pool, int64) {
 	require.NoError(t, err)
 
 	queue := outbox.NewQueue(store.Pool(), time.Now)
-	return service.NewIngest(store, queue), store.Pool(), integrationID
+	return service.NewIngest(store, queue, 60*time.Second, 24*time.Hour), store.Pool(), integrationID
 }
 
 func envelope(kind, action, delivery string, body string) ghapp.Envelope {

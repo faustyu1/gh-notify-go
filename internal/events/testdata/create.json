@@ -1,0 +1,6 @@
+{
+  "ref": "feat/star-debounce",
+  "ref_type": "branch",
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

@@ -1,0 +1,8 @@
+{
+  "action": "submitted",
+  "number": 128,
+  "review": {"state": "approved", "body": "LGTM"},
+  "pull_request": {"html_url": "https://github.com/acme/app/pull/128", "title": "Add retry to the sender"},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

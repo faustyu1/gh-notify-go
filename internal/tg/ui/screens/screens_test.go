@@ -9,6 +9,7 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
+	"github.com/faustyu/gh-notify-go/internal/storage"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui/screens"
 )
@@ -19,6 +20,12 @@ type fakeStore struct {
 	accounts, repos, chats int
 	installations          []domain.Installation
 	installation           domain.Installation
+	chatList               []domain.ChatSummary
+	chat                   domain.Chat
+	chatIntegrations       []domain.Integration
+	eventSettings          map[string]bool
+	filters                []storage.Filter
+	sent, failed           int
 }
 
 func (f *fakeStore) CountsForUser(context.Context, int64) (int, int, int, error) {
@@ -31,6 +38,30 @@ func (f *fakeStore) InstallationsForUser(context.Context, int64) ([]domain.Insta
 
 func (f *fakeStore) InstallationByID(context.Context, int64) (domain.Installation, error) {
 	return f.installation, nil
+}
+
+func (f *fakeStore) ChatsForUser(context.Context, int64) ([]domain.ChatSummary, error) {
+	return f.chatList, nil
+}
+
+func (f *fakeStore) ChatByTelegramID(_ context.Context, _ int64) (domain.Chat, error) {
+	return f.chat, nil
+}
+
+func (f *fakeStore) IntegrationsInChat(context.Context, int64) ([]domain.Integration, error) {
+	return f.chatIntegrations, nil
+}
+
+func (f *fakeStore) EventSettings(context.Context, int64) (map[string]bool, error) {
+	return f.eventSettings, nil
+}
+
+func (f *fakeStore) FiltersForIntegration(context.Context, int64) ([]storage.Filter, error) {
+	return f.filters, nil
+}
+
+func (f *fakeStore) StatusStats(context.Context, int64) (int, int, error) {
+	return f.sent, f.failed, nil
 }
 
 type fakeRepos struct{ list []ghapp.Repository }
@@ -163,4 +194,95 @@ func TestAddToChatLinksToTelegramGroupPicker(t *testing.T) {
 		}
 	}
 	require.Equal(t, "https://t.me/g0thubbot?startgroup=add", url)
+}
+
+func TestChatsListsChatsWithCounts(t *testing.T) {
+	screen := screens.NewChats(&fakeStore{chatList: []domain.ChatSummary{
+		{ChatID: 1, TelegramChatID: -100, Title: "Team", IntegrationCount: 2},
+	}})
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
+	require.NoError(t, err)
+	require.Contains(t, labels(view), "💬 Team · 2")
+
+	button := view.Rows[0][0]
+	require.Equal(t, "chat_detail", button.Screen)
+	require.Equal(t, "-100", button.Params["chat"])
+}
+
+func TestChatDetailShowsMuteAndIntegrations(t *testing.T) {
+	screen := screens.NewChatDetail(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup"},
+		chatIntegrations: []domain.Integration{
+			{ID: 7, RepoFullName: "acme/app"},
+		},
+	})
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "Team")
+	require.Contains(t, view.Text, "Уведомления активны")
+	require.Contains(t, labels(view), "📂 acme/app")
+	require.Contains(t, labels(view), "🔇 1ч")
+	require.Contains(t, labels(view), "🏷 Указать топик")
+}
+
+func TestEventsScreenDefaultsOnAndShowsExplicitOff(t *testing.T) {
+	screen := screens.NewEvents(&fakeStore{
+		eventSettings: map[string]bool{"push": false},
+	})
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2,
+		Params: ui.Params{"integration": "5", "name": "acme/app"}})
+	require.NoError(t, err)
+
+	all := labels(view)
+	require.Contains(t, all, "✅ Всё")
+	require.Contains(t, all, "❌ Ничего")
+	require.Contains(t, all, "❌ push", "an explicit off row must be off")
+	require.Contains(t, all, "✅ pull_request", "a kind without a row defaults to on")
+
+	var toggle string
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.Screen == "a_ev_toggle" && b.Params["kind"] == "push" {
+				toggle = b.Params["to"]
+			}
+		}
+	}
+	require.Equal(t, "1", toggle, "tapping an off toggle must turn it on")
+}
+
+func TestFiltersScreenListsRulesAndAddButtons(t *testing.T) {
+	screen := screens.NewFilters(&fakeStore{
+		filters: []storage.Filter{{ID: 3, Kind: "author", Value: "dependabot*"}},
+	})
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2,
+		Params: ui.Params{"integration": "5", "name": "acme/app"}})
+	require.NoError(t, err)
+
+	require.Contains(t, labels(view), "✖ 👤 Автор: dependabot*")
+	require.Contains(t, labels(view), "+ 🌿 Ветка")
+
+	var del *ui.Button
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.Screen == "a_filter_del" {
+				del = &b
+			}
+		}
+	}
+	require.NotNil(t, del)
+	require.Equal(t, "5", del.Params["integration"])
+}
+
+func TestStatusScreenSummarises(t *testing.T) {
+	screen := screens.NewStatus(&fakeStore{accounts: 1, repos: 2, chats: 1, sent: 12, failed: 1})
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "12")
+	require.Contains(t, view.Text, "Не доставлено: <b>1</b>")
 }

@@ -1,0 +1,6 @@
+{
+  "action": "published",
+  "release": {"tag_name": "v1.2.3", "name": "", "html_url": "https://github.com/acme/app/releases/tag/v1.2.3", "prerelease": false, "draft": false, "body": "Bugfixes."},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

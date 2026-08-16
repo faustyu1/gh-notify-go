@@ -1,0 +1,6 @@
+{
+  "action": "completed",
+  "workflow_run": {"name": "ci", "html_url": "https://github.com/acme/app/actions/runs/1", "conclusion": "failure", "head_branch": "main", "head_commit": {"message": "fix: handle nil config"}},
+  "repository": {"id": 42, "full_name": "acme/app"},
+  "sender": {"login": "octocat", "html_url": "https://github.com/octocat"}
+}

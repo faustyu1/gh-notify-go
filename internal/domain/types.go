@@ -27,6 +27,7 @@ type Integration struct {
 	RepoFullName         string
 	CreatedByUserID      int64
 	OwnerTelegramID      int64
+	BrokenReason         *string
 }
 
 type Installation struct {

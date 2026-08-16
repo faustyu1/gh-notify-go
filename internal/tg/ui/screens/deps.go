@@ -8,12 +8,19 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
+	"github.com/faustyu/gh-notify-go/internal/storage"
 )
 
 type Store interface {
 	CountsForUser(ctx context.Context, userID int64) (accounts, repos, chats int, err error)
 	InstallationsForUser(ctx context.Context, userID int64) ([]domain.Installation, error)
 	InstallationByID(ctx context.Context, id int64) (domain.Installation, error)
+	ChatsForUser(ctx context.Context, userID int64) ([]domain.ChatSummary, error)
+	ChatByTelegramID(ctx context.Context, telegramChatID int64) (domain.Chat, error)
+	IntegrationsInChat(ctx context.Context, chatID int64) ([]domain.Integration, error)
+	EventSettings(ctx context.Context, integrationID int64) (map[string]bool, error)
+	FiltersForIntegration(ctx context.Context, integrationID int64) ([]storage.Filter, error)
+	StatusStats(ctx context.Context, userID int64) (sent, failed int, err error)
 }
 
 type Repos interface {

@@ -95,16 +95,17 @@ func run(ctx context.Context) error {
 		screens.NewChatPicker(store),
 		screens.NewAddToChat(cfg.Bot.Username),
 		screens.NewResult(),
-		// Implemented by the follow-up plans; registered now so no button
-		// in the shipped interface leads nowhere.
-		screens.NewPlaceholder("chats", "Чаты"),
-		screens.NewPlaceholder("chat_detail", "Настройки чата"),
-		screens.NewPlaceholder("status", "Статус"),
-		screens.NewPlaceholder("settings", "Настройки"),
+		screens.NewChats(store),
+		screens.NewChatDetail(store),
+		screens.NewIntegrationDetail(),
+		screens.NewEvents(store),
+		screens.NewFilters(store),
+		screens.NewStatus(store),
+		screens.NewSettings(cfg.Limits.StarDebounce, cfg.Limits.StarCooldown, cfg.Limits.ChatPerMinute),
 	)
 
 	integrator := service.NewIntegrator(store, tg.NewAdminChecker(bot, time.Minute))
-	ingest := service.NewIngest(store, queue)
+	ingest := service.NewIngest(store, queue, cfg.Limits.StarDebounce, cfg.Limits.StarCooldown)
 	installations := service.NewInstallations(store, github)
 
 	mux := http.NewServeMux()
