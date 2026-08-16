@@ -232,6 +232,41 @@ func TestAddToChatLinksToTelegramGroupPicker(t *testing.T) {
 	require.Equal(t, "https://t.me/g0thubbot?startgroup=add", url)
 }
 
+type fakeChats struct{ list []domain.ChatSummary }
+
+func (f *fakeChats) CandidateChatsForUser(
+	context.Context, int64,
+) ([]domain.ChatSummary, error) {
+	return f.list, nil
+}
+
+func TestChatPickerOffersANewChatAlongsideExistingOnes(t *testing.T) {
+	// Listing the chats the bot already sits in is not enough: connecting a
+	// repository to a group the bot has never joined has to start here too.
+	screen := screens.NewChatPicker(&fakeChats{list: []domain.ChatSummary{
+		{ChatID: 1, TelegramChatID: -100, Title: "Team"},
+	}}, loc)
+
+	view, err := screen.Render(context.Background(), ui.Session{
+		UserID: 1, Depth: 2,
+		Params: ui.Params{"installation": "5", "repo": "7", "name": "octocat/hello"},
+	})
+	require.NoError(t, err)
+	require.Contains(t, labels(view), "💬 Team")
+	require.Contains(t, labels(view), "➕ Add to chat")
+
+	last := view.Rows[len(view.Rows)-1][0]
+	require.Equal(t, "add_to_chat", last.Screen, "the way in comes after the chats")
+}
+
+func TestChatPickerWithNoChatsOffersTheWayIn(t *testing.T) {
+	screen := screens.NewChatPicker(&fakeChats{}, loc)
+
+	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
+	require.NoError(t, err)
+	require.Contains(t, labels(view), "➕ Add to chat")
+}
+
 func TestChatsListsChatsWithCounts(t *testing.T) {
 	screen := screens.NewChats(&fakeStore{chatList: []domain.ChatSummary{
 		{ChatID: 1, TelegramChatID: -100, Title: "Team", IntegrationCount: 2},

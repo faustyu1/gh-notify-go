@@ -35,7 +35,7 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		}, nil
 	}
 
-	rows := make([][]ui.Button, 0, len(list))
+	rows := make([][]ui.Button, 0, len(list)+1)
 	for _, chat := range list {
 		// Carry the repository params forward so the connect action has
 		// everything it needs without a second lookup.
@@ -49,6 +49,13 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			Label: "💬 " + chat.Title, Screen: "connect", Params: params,
 		}})
 	}
+
+	// The way into a group the bot is not in yet has to be here too, not only
+	// on the empty screen: a user with one connected chat who wants a second
+	// one would otherwise have no route to it.
+	rows = append(rows, []ui.Button{{
+		Label: l.T("btn.add_to_chat"), Screen: "add_to_chat",
+	}})
 
 	return ui.View{
 		Text: render.Emoji(render.EmojiPeople, "👥") + " <b>" + l.T("chat_picker.title") +
