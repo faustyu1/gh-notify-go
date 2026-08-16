@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/faustyu/gh-notify-go/internal/events"
@@ -35,6 +36,20 @@ func NewIngest(store *storage.Store, queue *outbox.Queue) *Ingest {
 // regardless of Telegram's health.
 func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error) {
 	var result Result
+
+	// The installation lifecycle is not a notification; it maintains the
+	// installations table itself and never reaches the outbox.
+	if env.Kind == "installation" {
+		fresh, err := i.queue.MarkDelivered(ctx, env.DeliveryID)
+		if err != nil {
+			return result, fmt.Errorf("dedup delivery: %w", err)
+		}
+		if !fresh {
+			result.Duplicate = true
+			return result, nil
+		}
+		return result, i.handleInstallation(ctx, env)
+	}
 
 	// Checked before any database work: most deliveries are actions nobody
 	// wants, and this keeps them from costing a query.
@@ -78,4 +93,35 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 		result.Enqueued++
 	}
 	return result, nil
+}
+
+type installationPayload struct {
+	Action string `json:"action"`
+	Installation struct {
+		ID      int64 `json:"id"`
+		Account struct {
+			Login string `json:"login"`
+			Type  string `json:"type"`
+		} `json:"account"`
+	} `json:"installation"`
+}
+
+func (i *Ingest) handleInstallation(ctx context.Context, env ghapp.Envelope) error {
+	var p installationPayload
+	if err := json.Unmarshal(env.Raw, &p); err != nil {
+		return fmt.Errorf("parse installation: %w", err)
+	}
+
+	switch p.Action {
+	case "created", "new_permissions_accepted":
+		return i.store.RegisterInstallation(ctx,
+			p.Installation.ID, p.Installation.Account.Login, p.Installation.Account.Type)
+	case "suspend":
+		return i.store.SetInstallationSuspended(ctx, p.Installation.ID, true)
+	case "unsuspend":
+		return i.store.SetInstallationSuspended(ctx, p.Installation.ID, false)
+	case "deleted":
+		return i.store.DeleteInstallation(ctx, p.Installation.ID)
+	}
+	return nil
 }

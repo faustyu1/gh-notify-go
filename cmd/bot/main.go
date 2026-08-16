@@ -105,10 +105,11 @@ func run(ctx context.Context) error {
 
 	integrator := service.NewIntegrator(store, tg.NewAdminChecker(bot, time.Minute))
 	ingest := service.NewIngest(store, queue)
+	installations := service.NewInstallations(store, github)
 
 	mux := http.NewServeMux()
 	mux.Handle("/gh/webhook", httpapi.NewWebhookHandler(cfg.GitHub.WebhookSecret, ingest))
-	mux.Handle("/github/setup", httpapi.NewSetupHandler(store, tokens, cfg.Bot.Username))
+	mux.Handle("/github/setup", httpapi.NewSetupHandler(installations, cfg.Bot.Username))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
