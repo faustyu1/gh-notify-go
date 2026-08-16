@@ -1,16 +1,22 @@
 package i18n
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+)
 
 //go:embed locales/*.yaml
 var embedded embed.FS
 
 // NewBundle loads the locales compiled into the binary. It can only fail on
 // a malformed embedded file, which is a build-time defect, not a runtime
-// condition — hence the panic-free MustNewBundle used by callers that cannot
-// proceed without messages.
+// condition — hence MustNewBundle for wiring at startup.
 func NewBundle() (*Bundle, error) {
-	return New(embedded)
+	dir, err := fs.Sub(embedded, "locales")
+	if err != nil {
+		return nil, err
+	}
+	return New(dir)
 }
 
 // MustNewBundle is NewBundle for wiring at startup.

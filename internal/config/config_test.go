@@ -37,7 +37,6 @@ func TestLoadAppliesDefaults(t *testing.T) {
 
 func TestLoadReadsEveryVariable(t *testing.T) {
 	setRequired(t)
-	t.Setenv("BOT_OWNER_ID", "42")
 	t.Setenv("HTTP_ADDR", ":9090")
 	t.Setenv("WORKERS", "8")
 	t.Setenv("CHAT_PER_MINUTE", "30")
@@ -45,7 +44,6 @@ func TestLoadReadsEveryVariable(t *testing.T) {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 
-	require.Equal(t, int64(42), cfg.Bot.OwnerID)
 	require.Equal(t, ":9090", cfg.HTTP.Addr)
 	require.Equal(t, 8, cfg.Limits.Workers)
 	require.Equal(t, 30, cfg.Limits.ChatPerMinute)
@@ -80,8 +78,6 @@ func TestLoadNamesTheBadVariable(t *testing.T) {
 
 func TestLoadIgnoresEmptyOptionals(t *testing.T) {
 	setRequired(t)
-	t.Setenv("BOT_OWNER_ID", "")
-	cfg, err := config.Load()
+	_, err := config.Load()
 	require.NoError(t, err)
-	require.Zero(t, cfg.Bot.OwnerID)
 }

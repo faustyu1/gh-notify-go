@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type checkSuitePayload struct {
@@ -29,18 +30,19 @@ func init() {
 	Register("check_suite", ActionFilter{"completed"}, renderCheckSuite)
 }
 
-func renderCheckSuite(raw json.RawMessage) (string, error) {
+func renderCheckSuite(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p checkSuitePayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse check_suite: %w", err)
 	}
 
-	emoji, verdict := render.Emoji(render.EmojiCode, "⚙"), "завершился"
+	emoji, verdict := render.Emoji(render.EmojiCode, "⚙"), loc.T("ev.verdict.finished")
 	switch p.CheckSuite.Conclusion {
 	case "success":
-		emoji, verdict = render.Emoji(render.EmojiCheck, "✅"), "прошёл"
+		emoji, verdict = render.Emoji(render.EmojiCheck, "✅"), loc.T("ev.verdict.success")
 	case "failure", "timed_out", "cancelled":
-		emoji, verdict = render.Emoji(render.EmojiCross, "❌"), "упал ("+p.CheckSuite.Conclusion+")"
+		emoji, verdict = render.Emoji(render.EmojiCross, "❌"), loc.T("ev.verdict.failure",
+			"conclusion", p.CheckSuite.Conclusion)
 	}
 
 	var b strings.Builder
@@ -48,10 +50,11 @@ func renderCheckSuite(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("Чек-сьют %s · <code>%s</code>\n\n%s",
-		verdict,
-		render.Escape(p.CheckSuite.HeadBranch),
-		render.Link(p.CheckSuite.HTMLURL, "Подробнее"),
+	b.WriteString(loc.T("ev.check_suite.line",
+		"verdict", verdict,
+		"branch", render.Escape(p.CheckSuite.HeadBranch),
 	))
+	b.WriteString("\n\n")
+	b.WriteString(render.Link(p.CheckSuite.HTMLURL, loc.T("ev.detail")))
 	return b.String(), nil
 }

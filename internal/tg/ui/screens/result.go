@@ -4,38 +4,42 @@ import (
 	"context"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
 // result reports the outcome of a connect attempt. The callback handler puts
 // "ok" or an error code in params rather than rendering ad-hoc messages, so
 // every outcome lands on the same screen with the same navigation.
-type result struct{}
+type result struct {
+	loc *i18n.Bundle
+}
 
-func NewResult() ui.Screen { return result{} }
+func NewResult(loc *i18n.Bundle) ui.Screen { return result{loc: loc} }
 
 func (result) Name() string { return "result" }
 
-func (result) Render(_ context.Context, s ui.Session) (ui.View, error) {
-	var text string
+func (r result) Render(_ context.Context, s ui.Session) (ui.View, error) {
+	l := r.loc.Localizer(s.Lang)
+
+	var emoji, text string
 	switch s.Params["status"] {
 	case "ok":
-		text = render.Emoji(render.EmojiCheck, "✅") + " <b>Готово</b>\n\n" +
-			render.Escape(s.Params["name"]) + " подключён.\n" +
-			"События уже идут — настроить их можно в разделе «Чаты»."
+		emoji = render.Emoji(render.EmojiCheck, "✅")
+		text = l.T("result.ok", "name", render.Escape(s.Params["name"]))
 	case "not_admin":
-		text = render.Emoji(render.EmojiCross, "❌") + " <b>Нужны права администратора</b>\n\n" +
-			"Подключать репозитории к чату может только его администратор."
+		emoji = render.Emoji(render.EmojiCross, "❌")
+		text = l.T("result.not_admin")
 	case "duplicate":
-		text = render.Emoji(render.EmojiInfo, "ℹ") + " <b>Уже подключено</b>\n\n" +
-			render.Escape(s.Params["name"]) + " уже присылает события в этот чат."
+		emoji = render.Emoji(render.EmojiInfo, "ℹ")
+		text = l.T("result.duplicate", "name", render.Escape(s.Params["name"]))
 	default:
-		text = render.Emoji(render.EmojiCross, "❌") + " <b>Не получилось</b>\n\n" +
-			"Попробуй ещё раз чуть позже."
+		emoji = render.Emoji(render.EmojiCross, "❌")
+		text = l.T("result.error")
 	}
 
 	return ui.View{
-		Text: text,
-		Rows: [][]ui.Button{{{Label: "🏠 В начало", Screen: "home"}}},
+		Text: emoji + " " + text,
+		Rows: [][]ui.Button{{{Label: l.T("btn.home"), Screen: "home"}}},
 	}, nil
 }

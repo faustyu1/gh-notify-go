@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
@@ -13,10 +14,11 @@ type repos struct {
 	store    Store
 	repos    Repos
 	pageSize int
+	loc      *i18n.Bundle
 }
 
-func NewRepos(store Store, source Repos, pageSize int) ui.Screen {
-	return repos{store: store, repos: source, pageSize: pageSize}
+func NewRepos(store Store, source Repos, pageSize int, loc *i18n.Bundle) ui.Screen {
+	return repos{store: store, repos: source, pageSize: pageSize, loc: loc}
 }
 
 func (r repos) Name() string { return "repos" }
@@ -26,6 +28,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if err != nil {
 		return ui.View{}, fmt.Errorf("repos screen: bad installation param: %w", err)
 	}
+	l := r.loc.Localizer(s.Lang)
 
 	installation, err := r.store.InstallationByID(ctx, installationID)
 	if err != nil {
@@ -39,10 +42,8 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	if len(list) == 0 {
 		return ui.View{
-			Text: render.Emoji(render.EmojiInfo, "ℹ") +
-				" Не выбрано ни одного репозитория для этой установки.\n\n" +
-				"Открой настройки GitHub App и добавь репозитории.",
-			Rows: [][]ui.Button{{{Label: "🔗 Настроить доступ", Screen: "install"}}},
+			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("repos.empty"),
+			Rows: [][]ui.Button{{{Label: l.T("btn.configure_access"), Screen: "install"}}},
 		}, nil
 	}
 
@@ -81,7 +82,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		var nav []ui.Button
 		if page > 0 {
 			nav = append(nav, ui.Button{
-				Label: "◁ Раньше", Screen: "repos",
+				Label: l.T("btn.prev_page"), Screen: "repos",
 				Params: ui.Params{
 					"installation": s.Params["installation"],
 					"page":         strconv.Itoa(page - 1),
@@ -90,7 +91,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		}
 		if page < pages-1 {
 			nav = append(nav, ui.Button{
-				Label: "Вперёд ▷", Screen: "repos",
+				Label: l.T("btn.next_page"), Screen: "repos",
 				Params: ui.Params{
 					"installation": s.Params["installation"],
 					"page":         strconv.Itoa(page + 1),
@@ -100,11 +101,11 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		rows = append(rows, nav)
 	}
 
-	text := fmt.Sprintf("%s <b>%s</b>\n\nРепозиториев: %d",
-		render.Emoji(render.EmojiFile, "📁"),
-		render.Escape(installation.AccountLogin), len(list))
+	text := render.Emoji(render.EmojiFile, "📁") + " <b>" +
+		render.Escape(installation.AccountLogin) + "</b>\n\n" +
+		l.T("repos.count", "n", len(list))
 	if pages > 1 {
-		text += fmt.Sprintf("   ·   стр. %d/%d", page+1, pages)
+		text += l.T("repos.page", "n", page+1, "total", pages)
 	}
 
 	return ui.View{Text: text, Rows: rows}, nil

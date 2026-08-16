@@ -19,7 +19,7 @@ func LoadDotEnv(path string) error {
 		}
 		return fmt.Errorf("open %s: %w", path, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

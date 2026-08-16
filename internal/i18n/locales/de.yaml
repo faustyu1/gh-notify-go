@@ -1,0 +1,246 @@
+# Deutsche Lokalisierung. Gleiches Schlüsselset wie en.yaml.
+
+lang:
+  name: Deutsch
+
+nav:
+  back: "◁ Zurück"
+
+format:
+  datetime: "02.01 15:04"
+
+btn:
+  connect_github: "🔗 GitHub verbinden"
+  repos: "🏢 Repositories"
+  chats: "💬 Chats"
+  status: "📊 Status"
+  settings: "⚙️ Einstellungen"
+  add_to_chat: "➕ Zum Chat hinzufügen"
+  home: "🏠 Start"
+  more_accounts: "➕ Weiteres Konto"
+  configure_access: "🔗 Zugriff einrichten"
+  prev_page: "◁ Neuere"
+  next_page: "Ältere ▷"
+  connect_to_chat: "💬 Mit Chat verbinden"
+  open_github: "🔗 Auf GitHub öffnen"
+  install_app: "🔗 GitHub App installieren"
+  installed: "🔄 Ich habe installiert"
+  events: "🔔 Ereignisse"
+  health: "🩺 Zustand"
+  filters: "🚫 Filter"
+  disconnect: "🗑 Trennen"
+  set_topic: "🏷 Thema festlegen"
+  unmute: "🔔 Stummschaltung aufheben"
+  configure: "⚙️ Einrichten"
+  add_to_group: "➕ Zur Gruppe hinzufügen"
+
+home:
+  greeting: "Verbinde GitHub, und die Ereignisse deiner Repositories kommen in deine Chats."
+  accounts: "Konten"
+  repos: "Repositories"
+  chats: "Chats"
+
+accounts:
+  empty: "Noch keine GitHub-Konten verbunden."
+  title: "GitHub-Konten"
+  hint: "Wähle, wo das Repository liegt."
+
+repos:
+  empty: "Für diese Installation sind keine Repositories ausgewählt.\n\nÖffne die Einstellungen der GitHub App und füge Repositories hinzu."
+  count: "Repositories: {n}"
+  page: "   ·   S. {n}/{total}"
+
+repo_detail:
+  hint: "Wähle den Chat, in den die Ereignisse dieses Repositorys gehen sollen."
+
+install:
+  title: "GitHub verbinden"
+  body: "Tippe unten auf die Schaltfläche, wähle ein Konto oder eine Organisation und markiere die benötigten Repositories. GitHub bringt dich nach der Installation hierher zurück."
+
+chat_picker:
+  empty: "Der Bot ist noch in keinem deiner Chats.\n\nFüge ihn zu einer Gruppe hinzu, dann erscheint der Chat hier."
+  title: "Wohin liefern"
+
+add_to_chat:
+  title: "Zum Chat hinzufügen"
+  body: "Tippe auf die Schaltfläche und wähle eine Gruppe — der Bot erscheint dort und schickt sofort eine Einstellungs-Schaltfläche.\n\nDanach erscheint die Gruppe in der Liste, wenn du ein Repository verbindest."
+
+result:
+  ok: "<b>Fertig</b>\n\n{name} ist verbunden.\nDie Ereignisse laufen bereits — anpassen kannst du sie im Bereich „Chats“."
+  not_admin: "<b>Administratorrechte nötig</b>\n\nNur ein Chat-Administrator kann Repositories verbinden."
+  duplicate: "<b>Bereits verbunden</b>\n\n{name} schickt bereits Ereignisse in diesen Chat."
+  error: "<b>Hat nicht geklappt</b>\n\nVersuche es gleich noch einmal."
+
+chats:
+  empty: "Noch keine Chats mit verbundenen Repositories."
+  title: "Chats"
+  hint: "Ein Chat mit verbundenen Repositories kann stummgeschaltet oder auf ein Thema gerichtet werden."
+  entry: "💬 {title} · {n}"
+
+chat_detail:
+  muted_until: "🔇 Stummgeschaltet bis {time}"
+  active: "Benachrichtigungen aktiv"
+  topic: "Thema: <code>{id}</code>"
+  mute: "🔇 {h} Std."
+  language: "Sprache"
+
+integration_detail:
+  hint: "Was möchtest du für dieses Repository einstellen?"
+
+events:
+  title: "Ereignisse"
+  hint: "Voreinstellungen oben, einzelne Typen darunter."
+  preset_all: "✅ Alles"
+  preset_important: "⭐ Nur Wichtiges"
+  preset_none: "❌ Nichts"
+
+filters:
+  title: "Filter"
+  empty: "Noch wird nichts ignoriert."
+  hint: "Passende Ereignisse werden nicht gesendet:"
+  entry: "✖ {kind}: {value}"
+  add: "+ {label}"
+  kind:
+    author: "👤 Autor"
+    branch: "🌿 Branch"
+    label: "🏷 Label"
+    action: "⚡ Aktion"
+
+health:
+  title: "Zustand"
+  broken: "⚠️ <b>Kaputt:</b> {reason}"
+  muted_until: "🔇 Chat stummgeschaltet bis {time}"
+  last_event: "🕐 Letztes Ereignis: {time}"
+  no_events: "🕐 Noch keine Ereignisse"
+  sent24h: "✅ In 24h zugestellt: <b>{n}</b>"
+  failed24h: "❌ Nicht zugestellt: <b>{n}</b>"
+
+status:
+  title: "Status"
+  summary: "Konten: <b>{accounts}</b> · Repositories: <b>{repos}</b> · Chats: <b>{chats}</b>"
+  delivered24h: "In 24h zugestellt: <b>{n}</b>"
+  failed24h: "Nicht zugestellt: <b>{n}</b> — siehe Bereich „Chats“"
+
+settings:
+  title: "Einstellungen"
+  stars_line: "⭐ Sterne: eine Benachrichtigung pro Benutzer und Repository — für immer"
+  rate_line: "🚦 Sendelimit: <b>{n}</b> Nachrichten pro Minute und Chat, der Rest wird zu einer Zusammenfassung"
+  language: "Sprache"
+
+placeholder:
+  body: "Dieser Bereich ist noch in Arbeit."
+
+prompt:
+  topic: "Sende die ID des Forum-Themas (eine Zahl). 0 liefert in den allgemeinen Chat."
+  filter: "Sende ein Muster für den Filter ({kind}). Du kannst * verwenden."
+  topic_invalid: "⚠️ Das ist keine Zahl — das Thema wurde nicht geändert."
+  filter_invalid: "⚠️ Das Muster ist leer oder zu lang."
+
+greeting:
+  body: "Die Einrichtung läuft im privaten Chat."
+  button: "⚙️ Einrichten"
+
+delivery:
+  failed_title: "Zustellung fehlgeschlagen"
+  failed_line: "{repo} → Chat {chat}"
+
+ev:
+  push:
+    pushed: "{user} pushte in {branch} — {commits}"
+    forced: "{user} erzwang einen Push in {branch} — {commits}"
+    commits:
+      one: "{n} Commit"
+      other: "{n} Commits"
+    omitted: "…und {n} weitere"
+    commit_line: "• {sha}{author} {title}"
+    commit_author: "<i>({user})</i>"
+    compare: "Änderungen ansehen"
+
+  pull_request:
+    merged: "{user} hat den Pull-Request {link} gemergt"
+    closed: "{user} schloss den Pull-Request {link}"
+    reopened: "{user} öffnete den Pull-Request {link} erneut"
+    ready_for_review: "{user} markierte den Pull-Request {link} als bereit zur Review"
+    draft: "{user} öffnete einen Pull-Request-Entwurf {link}"
+    opened: "{user} öffnete den Pull-Request {link}"
+    ref_pair: "<code>{head}</code> → <code>{base}</code>"
+    diffstat:
+      one: " +{additions} −{deletions} in {files} Datei"
+      other: " +{additions} −{deletions} in {files} Dateien"
+
+  issues:
+    opened: "{user} öffnete das Issue {link}"
+    closed: "{user} schloss das Issue {link}"
+    reopened: "{user} öffnete das Issue {link} erneut"
+
+  issue_comment:
+    line: "{user} kommentierte das Issue {link}"
+
+  pull_request_review:
+    approved: "{user} hat den Pull-Request {link} approved"
+    changes_requested: "{user} forderte Änderungen am Pull-Request {link}"
+    commented: "{user} kommentierte den Pull-Request {link}"
+
+  pull_request_review_comment:
+    line: "{user} hinterließ einen Review-Kommentar im Pull-Request {link}"
+
+  commit_comment:
+    line: "{user} kommentierte den Commit {sha}"
+
+  release:
+    line: "{user} veröffentlichte {link}"
+    prerelease: "Pre-Release"
+
+  workflow_run:
+    line: "Workflow «{name}» — {verdict} · <code>{branch}</code>"
+    by: "Von {user}"
+    view_run: "Run ansehen"
+
+  check_suite:
+    line: "Check-Suite {verdict} · <code>{branch}</code>"
+
+  verdict:
+    finished: "beendet"
+    success: "bestanden"
+    failure: "fehlgeschlagen ({conclusion})"
+
+  fork:
+    line: "{user} forkte zu {link}"
+
+  member:
+    added: "{user} fügte den Mitwirkenden {member} hinzu"
+    removed: "{user} entfernte den Mitwirkenden {member}"
+
+  gollum:
+    line: "{user} aktualisierte das Wiki:"
+    page: "{name} ({action})"
+
+  public:
+    now_public: "ist jetzt öffentlich!"
+    opened: "{user} machte das Repository öffentlich"
+
+  ref:
+    created: "{user} erstellte {ref}"
+    deleted: "{user} löschte {ref}"
+    branch: "Branch"
+    tag: "Tag"
+
+  deployment:
+    started: "{user} startete ein Deployment in <code>{env}</code>"
+
+  deployment_status:
+    success: "in <code>{env}</code> deployed"
+    failure: "Deployment in <code>{env}</code> fehlgeschlagen"
+
+  star:
+    single: "{user} vergab einen Stern"
+    multi:
+      one: "+{n} Stern: {actors}"
+      other: "+{n} Sterne: {actors}"
+    total: "Gesamt: <b>{n}</b> ⭐"
+
+  digest:
+    line: "📋 Zu viele Ereignisse in einer Minute — {n} weitere: {list}"
+
+  detail: "Details"
+  report: "Bericht"

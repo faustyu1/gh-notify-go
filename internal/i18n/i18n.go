@@ -47,6 +47,12 @@ func (b *Bundle) Localizer(lang string) *Localizer {
 	return &Localizer{b: b, lang: Normalize(lang)}
 }
 
+// LocaleTree exposes the parsed tree of one locale, mainly so tests can
+// compare key sets across languages.
+func (b *Bundle) LocaleTree(lang string) map[string]any {
+	return b.locales[Normalize(lang)]
+}
+
 // Language names one selectable locale for the language picker screens.
 type Language struct {
 	Code string
@@ -73,7 +79,8 @@ func (l *Localizer) Lang() string { return l.lang }
 
 // T formats a message. args is a flat key/value list ("repo", "acme/app");
 // the message references values as {repo}. When the key holds plural
-// variants, the first numeric arg picks the form.
+// variants, the first numeric arg picks the form, so pass the counted
+// number before any other numbers.
 func (l *Localizer) T(key string, args ...any) string {
 	value, ok := l.resolve(key)
 	if !ok {

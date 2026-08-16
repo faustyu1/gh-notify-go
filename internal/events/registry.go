@@ -10,12 +10,15 @@ import (
 	"slices"
 	"sort"
 	"sync"
+
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type Kind string
 
-// Renderer turns a raw payload into a ready Telegram HTML message.
-type Renderer func(raw json.RawMessage) (string, error)
+// Renderer turns a raw payload into a ready Telegram HTML message in the
+// recipient's language.
+type Renderer func(loc *i18n.Localizer, raw json.RawMessage) (string, error)
 
 // ActionFilter lists the payload actions worth sending. An empty filter
 // means the event has no action field, or every action is worth sending.
@@ -61,7 +64,7 @@ func Wanted(kind Kind, action string) bool {
 	return slices.Contains(reg.filter, action)
 }
 
-func Render(kind Kind, raw json.RawMessage) (string, error) {
+func Render(kind Kind, loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	mu.RLock()
 	reg, ok := registry[kind]
 	mu.RUnlock()
@@ -69,7 +72,7 @@ func Render(kind Kind, raw json.RawMessage) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("%w: %s", ErrUnknownKind, kind)
 	}
-	return reg.render(raw)
+	return reg.render(loc, raw)
 }
 
 // Kinds returns every registered kind in a stable order, used to build the

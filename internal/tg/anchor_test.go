@@ -8,6 +8,7 @@ import (
 	"github.com/mymmrac/telego/telegoapi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
@@ -70,7 +71,7 @@ func (m *memNav) SetAnchorMessageID(_ context.Context, _ int64, id int) error {
 func TestShowSendsWhenNoAnchorExists(t *testing.T) {
 	api := &fakeAnchorAPI{}
 	nav := newMemNav()
-	anchor := tg.NewAnchor(api, ui.NewEngine(nav), nav)
+	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
 
 	err := anchor.Show(context.Background(), 1, 555, ui.View{
 		Text: "hello", Rows: [][]ui.Button{{{Label: "Go", Screen: "home"}}},
@@ -85,7 +86,7 @@ func TestShowEditsExistingAnchor(t *testing.T) {
 	api := &fakeAnchorAPI{}
 	nav := newMemNav()
 	nav.anchor = 42
-	anchor := tg.NewAnchor(api, ui.NewEngine(nav), nav)
+	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
 
 	require.NoError(t, anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"}))
 	require.Empty(t, api.sent)
@@ -102,7 +103,7 @@ func TestShowFallsBackToSendWhenAnchorIsGone(t *testing.T) {
 	}}
 	nav := newMemNav()
 	nav.anchor = 42
-	anchor := tg.NewAnchor(api, ui.NewEngine(nav), nav)
+	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
 
 	require.NoError(t, anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"}))
 	require.Len(t, api.edited, 1)
@@ -119,7 +120,7 @@ func TestShowIgnoresUnchangedContent(t *testing.T) {
 	}}
 	nav := newMemNav()
 	nav.anchor = 42
-	anchor := tg.NewAnchor(api, ui.NewEngine(nav), nav)
+	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
 
 	require.NoError(t, anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"}))
 	require.Empty(t, api.sent)
@@ -127,7 +128,7 @@ func TestShowIgnoresUnchangedContent(t *testing.T) {
 
 func TestKeyboardUsesOpaqueCallbackKeys(t *testing.T) {
 	nav := newMemNav()
-	engine := ui.NewEngine(nav)
+	engine := ui.NewEngine(nav, i18n.MustNewBundle())
 
 	markup, err := tg.Keyboard(context.Background(), engine, 1, ui.View{
 		Rows: [][]ui.Button{

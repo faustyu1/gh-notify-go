@@ -34,6 +34,14 @@ services:
       - github_app_key
     ports:
       - "127.0.0.1:8080:8080"
+    healthcheck:
+      # /healthz pings Postgres, so an unhealthy container means an actually
+      # unhealthy bot, not just a live process.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 secrets:

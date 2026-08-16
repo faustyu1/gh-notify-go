@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type forkPayload struct {
@@ -26,7 +27,7 @@ func init() {
 	Register("fork", nil, renderFork)
 }
 
-func renderFork(raw json.RawMessage) (string, error) {
+func renderFork(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p forkPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse fork: %w", err)
@@ -37,9 +38,9 @@ func renderFork(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s форкнул в %s",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		render.Link(p.Forkee.HTMLURL, p.Forkee.FullName),
+	b.WriteString(loc.T("ev.fork.line",
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"link", render.Link(p.Forkee.HTMLURL, p.Forkee.FullName),
 	))
 	return b.String(), nil
 }

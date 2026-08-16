@@ -33,6 +33,11 @@ type Job struct {
 	Kind           string
 	Payload        json.RawMessage
 	Attempts       int
+
+	// Language is the integration owner's locale: notifications in a chat
+	// speak the language of whoever set up that delivery, resolved fresh on
+	// every claim so a settings change applies to future messages.
+	Language string
 }
 
 type Deliverer interface {
@@ -44,11 +49,11 @@ type Deliverer interface {
 type PermanentHook func(ctx context.Context, job Job, err error)
 
 type Worker struct {
-	pool           *pgxpool.Pool
-	deliverer      Deliverer
-	now            func() time.Time
-	chatPerMinute  int
-	onPermanent    PermanentHook
+	pool          *pgxpool.Pool
+	deliverer     Deliverer
+	now           func() time.Time
+	chatPerMinute int
+	onPermanent   PermanentHook
 }
 
 func NewWorker(pool *pgxpool.Pool, d Deliverer, now func() time.Time) *Worker {
@@ -247,10 +252,13 @@ func (w *Worker) claim(ctx context.Context) ([]Job, error) {
 		)
 		UPDATE outbox o
 		SET status = 'sending'
-		FROM claimed, chats c
-		WHERE o.id = claimed.id AND c.id = o.chat_id
+		FROM claimed, chats c, integrations i, users u
+		WHERE o.id = claimed.id
+		  AND c.id = o.chat_id
+		  AND i.id = o.integration_id
+		  AND u.id = i.created_by_user_id
 		RETURNING o.id, o.chat_id, o.integration_id,
-		          c.telegram_chat_id, c.topic_id,
+		          c.telegram_chat_id, c.topic_id, u.language,
 		          o.event_kind, o.payload, o.attempts`,
 		w.now(), batchSize)
 	if err != nil {
@@ -262,7 +270,7 @@ func (w *Worker) claim(ctx context.Context) ([]Job, error) {
 		var job Job
 		if err := rows.Scan(
 			&job.ID, &job.ChatID, &job.IntegrationID,
-			&job.TelegramChatID, &job.TopicID,
+			&job.TelegramChatID, &job.TopicID, &job.Language,
 			&job.Kind, &job.Payload, &job.Attempts,
 		); err != nil {
 			rows.Close()

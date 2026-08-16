@@ -5,12 +5,18 @@ import (
 	"strconv"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
-type accounts struct{ store Store }
+type accounts struct {
+	store Store
+	loc   *i18n.Bundle
+}
 
-func NewAccounts(store Store) ui.Screen { return accounts{store: store} }
+func NewAccounts(store Store, loc *i18n.Bundle) ui.Screen {
+	return accounts{store: store, loc: loc}
+}
 
 func (a accounts) Name() string { return "accounts" }
 
@@ -19,12 +25,12 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if err != nil {
 		return ui.View{}, err
 	}
+	l := a.loc.Localizer(s.Lang)
 
 	if len(installations) == 0 {
 		return ui.View{
-			Text: render.Emoji(render.EmojiInfo, "ℹ") +
-				" Пока нет подключённых аккаунтов GitHub.",
-			Rows: [][]ui.Button{{{Label: "🔗 Подключить GitHub", Screen: "install"}}},
+			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("accounts.empty"),
+			Rows: [][]ui.Button{{{Label: l.T("btn.connect_github"), Screen: "install"}}},
 		}, nil
 	}
 
@@ -45,11 +51,11 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			Params: ui.Params{"installation": strconv.FormatInt(it.ID, 10)},
 		}})
 	}
-	rows = append(rows, []ui.Button{{Label: "➕ Ещё аккаунт", Screen: "install"}})
+	rows = append(rows, []ui.Button{{Label: l.T("btn.more_accounts"), Screen: "install"}})
 
 	return ui.View{
-		Text: render.Emoji(render.EmojiProfile, "👤") + " <b>Аккаунты GitHub</b>\n\n" +
-			"Выбери, где лежит репозиторий.",
+		Text: render.Emoji(render.EmojiProfile, "👤") + " <b>" + l.T("accounts.title") +
+			"</b>\n\n" + l.T("accounts.hint"),
 		Rows: rows,
 	}, nil
 }

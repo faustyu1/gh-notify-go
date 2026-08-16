@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type releasePayload struct {
@@ -31,7 +32,7 @@ func init() {
 	Register("release", ActionFilter{"published"}, renderRelease)
 }
 
-func renderRelease(raw json.RawMessage) (string, error) {
+func renderRelease(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p releasePayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse release: %w", err)
@@ -47,12 +48,13 @@ func renderRelease(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s выпустил %s\n",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		render.Link(p.Release.HTMLURL, render.Truncate(title, 80)),
+	b.WriteString(loc.T("ev.release.line",
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"link", render.Link(p.Release.HTMLURL, render.Truncate(title, 80)),
 	))
+	b.WriteString("\n")
 	if p.Release.Prerelease {
-		b.WriteString("pre-release\n")
+		b.WriteString(loc.T("ev.release.prerelease") + "\n")
 	}
 	if body := strings.TrimSpace(p.Release.Body); body != "" {
 		b.WriteString("\n" + render.Markdown(body, 300))

@@ -7,10 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/faustyu/gh-notify-go/internal/events"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 func TestRenderUnknownKindIsAnError(t *testing.T) {
-	_, err := events.Render("no_such_event", json.RawMessage(`{}`))
+	loc := i18n.MustNewBundle().Localizer(i18n.Default)
+	_, err := events.Render("no_such_event", loc, json.RawMessage(`{}`))
 	require.ErrorIs(t, err, events.ErrUnknownKind)
 }
 

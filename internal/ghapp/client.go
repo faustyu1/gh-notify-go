@@ -106,7 +106,7 @@ func (c *Client) InstallationInfo(
 	if err != nil {
 		return Account{}, fmt.Errorf("github request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 512))
@@ -174,7 +174,7 @@ func (c *Client) get(ctx context.Context, installationID int64, url string, out 
 	if err != nil {
 		return "", fmt.Errorf("github request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 512))

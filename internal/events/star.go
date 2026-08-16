@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 // starPayload is the coalesced shape the ingest path builds itself: one row
@@ -23,7 +24,7 @@ func init() {
 	Register("star", ActionFilter{"created"}, renderStar)
 }
 
-func renderStar(raw json.RawMessage) (string, error) {
+func renderStar(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p starPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse star: %w", err)
@@ -38,14 +39,16 @@ func renderStar(raw json.RawMessage) (string, error) {
 	case 0:
 		return "", fmt.Errorf("star payload without actors")
 	case 1:
-		b.WriteString(fmt.Sprintf("%s поставил звезду\n", render.Link(
-			"https://github.com/"+p.Actors[0], p.Actors[0])))
+		b.WriteString(loc.T("ev.star.single",
+			"user", render.Link("https://github.com/"+p.Actors[0], p.Actors[0])))
+		b.WriteString("\n")
 	default:
-		b.WriteString(fmt.Sprintf("+%d звёзд: %s\n",
-			len(p.Actors),
-			render.Escape(strings.Join(p.Actors, ", ")),
+		b.WriteString(loc.T("ev.star.multi",
+			"n", len(p.Actors),
+			"actors", render.Escape(strings.Join(p.Actors, ", ")),
 		))
+		b.WriteString("\n")
 	}
-	b.WriteString(fmt.Sprintf("\nВсего: <b>%d</b> ⭐", p.TotalStars))
+	b.WriteString("\n" + loc.T("ev.star.total", "n", p.TotalStars))
 	return b.String(), nil
 }

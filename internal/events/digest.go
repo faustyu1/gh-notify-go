@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 // digestPayload is what the worker's rate valve builds: the event kinds that
@@ -18,7 +20,7 @@ func init() {
 	Register("digest", nil, renderDigest)
 }
 
-func renderDigest(raw json.RawMessage) (string, error) {
+func renderDigest(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p digestPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse digest: %w", err)
@@ -43,6 +45,6 @@ func renderDigest(raw json.RawMessage) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("📋 Слишком много событий за минуту — ещё %d: %s",
-		len(p.Items), strings.Join(parts, ", ")), nil
+	return loc.T("ev.digest.line",
+		"n", len(p.Items), "list", strings.Join(parts, ", ")), nil
 }

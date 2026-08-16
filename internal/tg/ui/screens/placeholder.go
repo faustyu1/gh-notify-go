@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
@@ -13,18 +14,20 @@ import (
 type placeholder struct {
 	name  string
 	title string
+	loc   *i18n.Bundle
 }
 
-func NewPlaceholder(name, title string) ui.Screen {
-	return placeholder{name: name, title: title}
+func NewPlaceholder(name, title string, loc *i18n.Bundle) ui.Screen {
+	return placeholder{name: name, title: title, loc: loc}
 }
 
 func (p placeholder) Name() string { return p.name }
 
-func (p placeholder) Render(_ context.Context, _ ui.Session) (ui.View, error) {
+func (p placeholder) Render(_ context.Context, s ui.Session) (ui.View, error) {
+	l := p.loc.Localizer(s.Lang)
 	return ui.View{
 		Text: render.Emoji(render.EmojiClock, "⏰") + " <b>" +
-			render.Escape(p.title) + "</b>\n\nЭтот раздел ещё в работе.",
-		Rows: [][]ui.Button{{{Label: "🏠 В начало", Screen: "home"}}},
+			render.Escape(p.title) + "</b>\n\n" + l.T("placeholder.body"),
+		Rows: [][]ui.Button{{{Label: l.T("btn.home"), Screen: "home"}}},
 	}, nil
 }

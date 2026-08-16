@@ -23,9 +23,14 @@ func NewInstallations(store *storage.Store, gh InstallationInfoSource) *Installa
 	return &Installations{store: store, gh: gh}
 }
 
-// ClaimInstallation records that userID (users.id, carried through the
-// install URL as `state`) owns the installation. The account details come
-// from GitHub, not from the unauthenticated redirect.
+// ClaimInstallation records that userID owns the installation. The user is
+// identified by a single-use token the setup redirect carried, and the
+// account details come from GitHub — nothing in the redirect's query string
+// is trusted beyond the installation id, which is only ever used to look
+// things up.
+//
+// An installation that already has a different owner is not transferred; see
+// storage.ClaimInstallationOwner.
 func (s *Installations) ClaimInstallation(
 	ctx context.Context, installationID, userID int64,
 ) error {
@@ -33,9 +38,6 @@ func (s *Installations) ClaimInstallation(
 	if err != nil {
 		return fmt.Errorf("fetch installation info: %w", err)
 	}
-	if _, err := s.store.UpsertInstallation(ctx,
-		installationID, account.Login, account.Type, userID); err != nil {
-		return fmt.Errorf("claim installation: %w", err)
-	}
-	return nil
+	return s.store.ClaimInstallationOwner(ctx,
+		installationID, account.Login, account.Type, userID)
 }

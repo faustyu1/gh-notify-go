@@ -33,11 +33,37 @@ func TestUpsertUserIsIdempotent(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	first, err := store.UpsertUser(ctx, 555)
+	first, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
-	second, err := store.UpsertUser(ctx, 555)
+	second, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
 	require.Equal(t, first, second)
+}
+
+// The Telegram client language seeds the row once; afterwards only an
+// explicit choice from the settings screen may change it, so a user who
+// picked Russian keeps Russian even with an English client.
+func TestUpsertUserKeepsExplicitLanguage(t *testing.T) {
+	ctx := context.Background()
+	store := newStore(t)
+
+	_, lang, err := store.UpsertUser(ctx, 555, "ru")
+	require.NoError(t, err)
+	require.Equal(t, "ru", lang)
+
+	require.NoError(t, store.SetUserLanguage(ctx, mustUserID(t, store, 555), "de"))
+
+	_, lang, err = store.UpsertUser(ctx, 555, "en")
+	require.NoError(t, err)
+	require.Equal(t, "de", lang, "a later language_code must not win")
+}
+
+func mustUserID(t *testing.T, store *storage.Store, telegramID int64) int64 {
+	t.Helper()
+	var id int64
+	require.NoError(t, store.Pool().QueryRow(context.Background(),
+		`SELECT id FROM users WHERE telegram_id = $1`, telegramID).Scan(&id))
+	return id
 }
 
 func TestUpsertChatRefreshesTitle(t *testing.T) {
@@ -60,12 +86,11 @@ func TestIntegrationsForRepoJoinsChatAndOwner(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	userID, err := store.UpsertUser(ctx, 555)
+	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
 	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
 	require.NoError(t, err)
-	installID, err := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
-	require.NoError(t, err)
+	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err = store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
 
@@ -82,9 +107,9 @@ func TestIntegrationsForRepoSkipsMutedChats(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	userID, _ := store.UpsertUser(ctx, 555)
+	userID, _, _ := store.UpsertUser(ctx, 555, "en")
 	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
-	installID, _ := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
+	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
 
@@ -101,9 +126,9 @@ func TestEventEnabledDefaultsToTrueWithNoRow(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	userID, _ := store.UpsertUser(ctx, 555)
+	userID, _, _ := store.UpsertUser(ctx, 555, "en")
 	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
-	installID, _ := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
+	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, _ := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 
 	// No event_settings row exists yet: a new integration is fully on.
@@ -125,9 +150,8 @@ func TestTokenCacheRoundTripsEncrypted(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	userID, _ := store.UpsertUser(ctx, 555)
-	_, err := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
-	require.NoError(t, err)
+	userID, _, _ := store.UpsertUser(ctx, 555, "en")
+	mustInstallation(t, store, 7, "acme", "Organization", userID)
 
 	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 	cache := store.TokenCache()
@@ -153,4 +177,20 @@ func TestTokenCacheGetReturnsEmptyWhenAbsent(t *testing.T) {
 	token, _, err := store.TokenCache().Get(ctx, 999)
 	require.NoError(t, err)
 	require.Empty(t, token)
+}
+
+// mustInstallation creates an installation the way production does — through
+// the claim path — and returns its internal id, which most tests need in
+// order to hang an integration off it.
+func mustInstallation(
+	t *testing.T, store *storage.Store, githubID int64, login, accountType string, userID int64,
+) int64 {
+	t.Helper()
+	ctx := context.Background()
+	require.NoError(t, store.ClaimInstallationOwner(ctx, githubID, login, accountType, userID))
+
+	var id int64
+	require.NoError(t, store.Pool().QueryRow(ctx,
+		`SELECT id FROM installations WHERE github_installation_id = $1`, githubID).Scan(&id))
+	return id
 }

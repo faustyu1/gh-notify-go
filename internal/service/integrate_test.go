@@ -29,12 +29,11 @@ func newIntegrator(t *testing.T, allow bool) (*service.Integrator, *storage.Stor
 	require.NoError(t, err)
 	t.Cleanup(store.Close)
 
-	userID, err := store.UpsertUser(ctx, 555)
+	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
 	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
 	require.NoError(t, err)
-	installID, err := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
-	require.NoError(t, err)
+	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 
 	req := service.ConnectRequest{
 		UserID: userID, TelegramUserID: 555,
@@ -87,4 +86,18 @@ func TestConnectRejectsDuplicate(t *testing.T) {
 
 	require.NoError(t, integrator.Connect(ctx, req))
 	require.ErrorIs(t, integrator.Connect(ctx, req), service.ErrAlreadyConnected)
+}
+
+// mustInstallation mirrors production: ownership is only ever claimed.
+func mustInstallation(
+	t *testing.T, store *storage.Store, githubID int64, login, accountType string, userID int64,
+) int64 {
+	t.Helper()
+	ctx := context.Background()
+	require.NoError(t, store.ClaimInstallationOwner(ctx, githubID, login, accountType, userID))
+
+	var id int64
+	require.NoError(t, store.Pool().QueryRow(ctx,
+		`SELECT id FROM installations WHERE github_installation_id = $1`, githubID).Scan(&id))
+	return id
 }

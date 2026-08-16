@@ -30,12 +30,11 @@ func newIngest(t *testing.T) (*service.Ingest, *pgxpool.Pool, int64) {
 	require.NoError(t, err)
 	t.Cleanup(store.Close)
 
-	userID, err := store.UpsertUser(ctx, 555)
+	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
 	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
 	require.NoError(t, err)
-	installID, err := store.UpsertInstallation(ctx, 7, "acme", "Organization", userID)
-	require.NoError(t, err)
+	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
 

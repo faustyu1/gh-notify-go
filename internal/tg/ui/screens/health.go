@@ -2,26 +2,33 @@ package screens
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/storage"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
-type healthScreen struct{ store HealthStore }
+type healthScreen struct {
+	store HealthStore
+	loc   *i18n.Bundle
+}
 
 // HealthStore is the narrow read the health screen needs.
 type HealthStore interface {
 	HealthForIntegration(ctx context.Context, integrationID int64) (storage.IntegrationHealth, error)
 }
 
-func NewHealth(store HealthStore) ui.Screen { return healthScreen{store: store} }
+func NewHealth(store HealthStore, loc *i18n.Bundle) ui.Screen {
+	return healthScreen{store: store, loc: loc}
+}
 
 func (h healthScreen) Name() string { return "health" }
 
 func (h healthScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) {
+	l := h.loc.Localizer(s.Lang)
+
 	integrationID := mustAtoi64(s.Params["integration"])
 
 	health, err := h.store.HealthForIntegration(ctx, integrationID)
@@ -29,31 +36,33 @@ func (h healthScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 		return ui.View{}, err
 	}
 
-	text := render.Emoji(render.EmojiStats, "🩺") + " <b>Здоровье</b>\n\n" +
+	text := render.Emoji(render.EmojiStats, "🩺") + " <b>" + l.T("health.title") + "</b>\n\n" +
 		"📂 " + render.Escape(health.RepoFullName) + " → 💬 " + render.Escape(health.ChatTitle) + "\n"
 
 	if health.BrokenReason != nil {
-		text += "⚠️ <b>Сломана:</b> " + render.Escape(*health.BrokenReason) + "\n"
+		text += l.T("health.broken", "reason", render.Escape(*health.BrokenReason)) + "\n"
 	}
 	if health.MutedUntil != nil && health.MutedUntil.After(time.Now()) {
-		text += "🔇 Чат замьютен до " + health.MutedUntil.Local().Format("02.01 15:04") + "\n"
+		text += l.T("health.muted_until",
+			"time", health.MutedUntil.Local().Format(l.DateTimeLayout())) + "\n"
 	}
 	if health.LastEventAt != nil {
-		text += "🕐 Последнее событие: " + health.LastEventAt.Local().Format("02.01 15:04") + "\n"
+		text += l.T("health.last_event",
+			"time", health.LastEventAt.Local().Format(l.DateTimeLayout())) + "\n"
 	} else {
-		text += "🕐 Событий ещё не было\n"
+		text += l.T("health.no_events") + "\n"
 	}
 
-	text += fmt.Sprintf("\n✅ Доставлено за 24ч: <b>%d</b>", health.Sent24h)
+	text += "\n" + l.T("health.sent24h", "n", health.Sent24h)
 	if health.Failed24h > 0 {
-		text += fmt.Sprintf("\n❌ Не доставлено: <b>%d</b>", health.Failed24h)
+		text += "\n" + l.T("health.failed24h", "n", health.Failed24h)
 	}
 
 	return ui.View{
 		Text: text,
 		Rows: [][]ui.Button{
-			{{Label: "🔔 События", Screen: "events", Params: s.Params}},
-			{{Label: "🏠 В начало", Screen: "home"}},
+			{{Label: l.T("btn.events"), Screen: "events", Params: s.Params}},
+			{{Label: l.T("btn.home"), Screen: "home"}},
 		},
 	}, nil
 }

@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
 	"github.com/faustyu/gh-notify-go/internal/httpapi"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/secret"
 	"github.com/faustyu/gh-notify-go/internal/service"
@@ -58,6 +58,10 @@ func run(ctx context.Context) error {
 		return err
 	}
 
+	// Every user-visible string lives here; a failure to load the embedded
+	// locales is a build defect, not a runtime condition.
+	loc := i18n.MustNewBundle()
+
 	if err := migrations.Up(ctx, cfg.Database.URL); err != nil {
 		return err
 	}
@@ -84,12 +88,12 @@ func run(ctx context.Context) error {
 	queue := outbox.NewQueue(store.Pool(), time.Now)
 	sender := tg.NewSender(bot, func(ctx context.Context, chatID int64) error {
 		return store.ClearTopic(ctx, chatID)
-	})
+	}, loc)
 
 	// A row that will never be retried must be heard about: the owner gets a
 	// DM, and a kicked bot marks the integration broken.
 	onPermanent := func(ctx context.Context, job outbox.Job, err error) {
-		owner, repo, lookupErr := store.IntegrationOwner(ctx, job.IntegrationID)
+		owner, repo, ownerLang, lookupErr := store.IntegrationOwner(ctx, job.IntegrationID)
 		if lookupErr != nil {
 			slog.Error("terminal failure without owner", "job", job.ID, "error", err)
 			return
@@ -99,43 +103,61 @@ func run(ctx context.Context) error {
 				slog.Error("mark integration broken", "error", brokenErr)
 			}
 		}
+		l := loc.Localizer(ownerLang)
 		_, _ = bot.SendMessage(ctx, &telego.SendMessageParams{
 			ChatID:    telego.ChatID{ID: owner},
 			ParseMode: telego.ModeHTML,
-			Text: fmt.Sprintf("⚠️ <b>Доставка не удалась</b>\n\n%s → чат %d\n\n<code>%s</code>",
-				render.Escape(repo), job.TelegramChatID, render.Escape(err.Error())),
+			Text: "⚠️ <b>" + l.T("delivery.failed_title") + "</b>\n\n" +
+				l.T("delivery.failed_line", "repo", render.Escape(repo),
+					"chat", job.TelegramChatID) +
+				"\n\n<code>" + render.Escape(err.Error()) + "</code>",
 		})
 	}
 
+	// One admin checker for the whole bot: the connect flow and the screen
+	// guard share its cache, so a burst of taps stays one Telegram call.
+	admins := tg.NewAdminChecker(bot, time.Minute)
+	guard := tg.NewGuard(admins, store)
+
 	nav := ui.NewPostgresNav(store.Pool())
-	engine := ui.NewEngine(nav)
+	engine := ui.NewEngine(nav, loc).WithGuard(guard.Screen())
 	engine.Register(
-		screens.NewHome(store),
-		screens.NewInstall(cfg.GitHub.Slug, cfg.HTTP.PublicURL),
-		screens.NewAccounts(store),
-		screens.NewRepos(store, github, 10),
-		screens.NewRepoDetail(store),
-		screens.NewChatPicker(store),
-		screens.NewAddToChat(cfg.Bot.Username),
-		screens.NewResult(),
-		screens.NewChats(store),
-		screens.NewChatDetail(store),
-		screens.NewIntegrationDetail(),
-		screens.NewEvents(store),
-		screens.NewFilters(store),
-		screens.NewHealth(store),
-		screens.NewStatus(store),
-		screens.NewSettings(cfg.Limits.ChatPerMinute),
+		screens.NewHome(store, loc),
+		screens.NewInstall(cfg.GitHub.Slug, cfg.HTTP.PublicURL, store, loc),
+		screens.NewAccounts(store, loc),
+		screens.NewRepos(store, github, 10, loc),
+		screens.NewRepoDetail(store, loc),
+		screens.NewChatPicker(store, loc),
+		screens.NewAddToChat(cfg.Bot.Username, loc),
+		screens.NewResult(loc),
+		screens.NewChats(store, loc),
+		screens.NewChatDetail(store, loc),
+		screens.NewIntegrationDetail(loc),
+		screens.NewEvents(store, loc),
+		screens.NewFilters(store, loc),
+		screens.NewHealth(store, loc),
+		screens.NewStatus(store, loc),
+		screens.NewSettings(cfg.Limits.ChatPerMinute, loc),
 	)
 
-	integrator := service.NewIntegrator(store, tg.NewAdminChecker(bot, time.Minute))
+	integrator := service.NewIntegrator(store, admins)
 	ingest := service.NewIngest(store, queue)
 	installations := service.NewInstallations(store, github)
 
 	mux := http.NewServeMux()
 	mux.Handle("/gh/webhook", httpapi.NewWebhookHandler(cfg.GitHub.WebhookSecret, ingest))
-	mux.Handle("/github/setup", httpapi.NewSetupHandler(installations, cfg.Bot.Username))
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+	mux.Handle("/github/setup",
+		httpapi.NewSetupHandler(installations, store, cfg.Bot.Username))
+	// Liveness that means something: a process that cannot reach Postgres
+	// delivers nothing, so it must not report itself healthy.
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		pingCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := store.Pool().Ping(pingCtx); err != nil {
+			slog.Warn("health check failed", "error", err)
+			http.Error(w, "database unreachable", http.StatusServiceUnavailable)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -143,6 +165,9 @@ func run(ctx context.Context) error {
 		Addr:              cfg.HTTP.Addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	updates, err := bot.UpdatesViaLongPolling(ctx, nil)
@@ -153,12 +178,20 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Without this a panic on one update takes the whole process down, which
+	// turns any single malformed update into an outage.
+	handler.Use(th.PanicRecoveryHandler(func(recovered any) error {
+		slog.Error("recovered from panic in update handler", "panic", recovered)
+		return nil
+	}))
 	tg.RegisterHandlers(handler, tg.HandlerDeps{
 		Engine:     engine,
 		Anchor:     tg.NewAnchor(bot, engine, nav),
 		Store:      store,
 		Integrator: integrator,
+		Guard:      guard,
 		BotUser:    cfg.Bot.Username,
+		Loc:        loc,
 	})
 
 	var wg sync.WaitGroup

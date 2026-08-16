@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 // deployment fires when a deploy starts; deployment_status when it finishes.
@@ -46,20 +47,19 @@ func init() {
 	Register("deployment_status", nil, renderDeploymentStatus)
 }
 
-func renderDeployment(raw json.RawMessage) (string, error) {
+func renderDeployment(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p deploymentPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse deployment: %w", err)
 	}
-	return fmt.Sprintf("%s <b>%s</b>\n%s начал деплой в <code>%s</code>",
-		render.Emoji(render.EmojiUpload, "🚀"),
-		render.Escape(p.Repo.FullName),
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		render.Escape(p.Deployment.Environment),
+	return render.Emoji(render.EmojiUpload, "🚀") +
+		" <b>" + render.Escape(p.Repo.FullName) + "</b>\n" + loc.T("ev.deployment.started",
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"env", render.Escape(p.Deployment.Environment),
 	), nil
 }
 
-func renderDeploymentStatus(raw json.RawMessage) (string, error) {
+func renderDeploymentStatus(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p deploymentStatusPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse deployment_status: %w", err)
@@ -68,9 +68,13 @@ func renderDeploymentStatus(raw json.RawMessage) (string, error) {
 	emoji, verdict := render.Emoji(render.EmojiLoading, "⏳"), p.DeploymentStatus.State
 	switch p.DeploymentStatus.State {
 	case "success":
-		emoji, verdict = render.Emoji(render.EmojiCheck, "✅"), "задеплоено"
+		emoji, verdict = render.Emoji(render.EmojiCheck, "✅"),
+			loc.T("ev.deployment_status.success",
+				"env", render.Escape(p.Deployment.Environment))
 	case "failure", "error":
-		emoji, verdict = render.Emoji(render.EmojiCross, "❌"), "деплой упал"
+		emoji, verdict = render.Emoji(render.EmojiCross, "❌"),
+			loc.T("ev.deployment_status.failure",
+				"env", render.Escape(p.Deployment.Environment))
 	}
 
 	var b strings.Builder
@@ -78,9 +82,9 @@ func renderDeploymentStatus(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(verdict + " в <code>" + render.Escape(p.Deployment.Environment) + "</code>")
+	b.WriteString(verdict)
 	if p.DeploymentStatus.TargetURL != "" {
-		b.WriteString("\n" + render.Link(p.DeploymentStatus.TargetURL, "Отчёт"))
+		b.WriteString("\n" + render.Link(p.DeploymentStatus.TargetURL, loc.T("ev.report")))
 	}
 	return b.String(), nil
 }

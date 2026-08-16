@@ -2,15 +2,20 @@ package screens
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
-type statusScreen struct{ store Store }
+type statusScreen struct {
+	store Store
+	loc   *i18n.Bundle
+}
 
-func NewStatus(store Store) ui.Screen { return statusScreen{store: store} }
+func NewStatus(store Store, loc *i18n.Bundle) ui.Screen {
+	return statusScreen{store: store, loc: loc}
+}
 
 func (s statusScreen) Name() string { return "status" }
 
@@ -23,24 +28,24 @@ func (s statusScreen) Render(ctx context.Context, sess ui.Session) (ui.View, err
 	if err != nil {
 		return ui.View{}, err
 	}
+	l := s.loc.Localizer(sess.Lang)
 
-	text := fmt.Sprintf(
-		"%s <b>Статус</b>\n\n"+
-			"%s Аккаунтов: <b>%d</b> · репозиториев: <b>%d</b> · чатов: <b>%d</b>\n"+
-			"%s За 24 часа доставлено: <b>%d</b>",
-		render.Emoji(render.EmojiStats, "📊"),
-		render.Emoji(render.EmojiProfile, "👤"), accounts, repos, chats,
-		render.Emoji(render.EmojiCheck, "✅"), sent,
-	)
+	text := render.Emoji(render.EmojiStats, "📊") + " <b>" + l.T("status.title") + "</b>\n\n" +
+		render.Emoji(render.EmojiProfile, "👤") + " " + l.T("status.summary",
+		"accounts", accounts, "repos", repos, "chats", chats) + "\n" +
+		render.Emoji(render.EmojiCheck, "✅") + " " + l.T("status.delivered24h", "n", sent)
 	if failed > 0 {
-		text += fmt.Sprintf("\n%s Не доставлено: <b>%d</b> — смотри раздел «Чаты»",
-			render.Emoji(render.EmojiCross, "❌"), failed)
+		text += "\n" + render.Emoji(render.EmojiCross, "❌") + " " +
+			l.T("status.failed24h", "n", failed)
 	}
 
 	return ui.View{
 		Text: text,
 		Rows: [][]ui.Button{
-			{{Label: "💬 Чаты", Screen: "chats"}, {Label: "🏢 Репозитории", Screen: "accounts"}},
+			{
+				{Label: l.T("btn.chats"), Screen: "chats"},
+				{Label: l.T("btn.repos"), Screen: "accounts"},
+			},
 		},
 	}, nil
 }

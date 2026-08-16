@@ -35,6 +35,46 @@ func (s *Store) ChatByTelegramID(ctx context.Context, telegramChatID int64) (dom
 	return c, nil
 }
 
+// TelegramChatForIntegration resolves the chat an integration belongs to.
+// Authorization uses it instead of the chat id carried in callback params: a
+// param is a claim, this is the fact.
+func (s *Store) TelegramChatForIntegration(
+	ctx context.Context, integrationID int64,
+) (int64, error) {
+	var telegramChatID int64
+	err := s.pool.QueryRow(ctx, `
+		SELECT c.telegram_chat_id
+		FROM integrations i
+		JOIN chats c ON c.id = i.chat_id
+		WHERE i.id = $1`, integrationID).Scan(&telegramChatID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("integration %d not found", integrationID)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("resolve integration chat: %w", err)
+	}
+	return telegramChatID, nil
+}
+
+// TelegramChatForFilter does the same for a filter row, which reaches the
+// handler with nothing but its own id.
+func (s *Store) TelegramChatForFilter(ctx context.Context, filterID int64) (int64, error) {
+	var telegramChatID int64
+	err := s.pool.QueryRow(ctx, `
+		SELECT c.telegram_chat_id
+		FROM filters f
+		JOIN integrations i ON i.id = f.integration_id
+		JOIN chats c ON c.id = i.chat_id
+		WHERE f.id = $1`, filterID).Scan(&telegramChatID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("filter %d not found", filterID)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("resolve filter chat: %w", err)
+	}
+	return telegramChatID, nil
+}
+
 // SetChatMute sets or clears a chat's mute window. A muted chat receives
 // nothing: the worker-side fanout query drops it.
 func (s *Store) SetChatMute(ctx context.Context, telegramChatID int64, until *time.Time) error {
@@ -138,22 +178,22 @@ func (s *Store) SetEventEnabled(ctx context.Context, integrationID int64, kind s
 }
 
 // IntegrationOwner finds who to tell when delivery to one of their
-// integrations fails terminally.
+// integrations fails terminally, and in which language to tell them.
 func (s *Store) IntegrationOwner(
 	ctx context.Context, integrationID int64,
-) (telegramID int64, repoFullName string, err error) {
+) (telegramID int64, repoFullName, language string, err error) {
 	err = s.pool.QueryRow(ctx, `
-		SELECT u.telegram_id, i.repo_full_name
+		SELECT u.telegram_id, i.repo_full_name, u.language
 		FROM integrations i
 		JOIN users u ON u.id = i.created_by_user_id
-		WHERE i.id = $1`, integrationID).Scan(&telegramID, &repoFullName)
+		WHERE i.id = $1`, integrationID).Scan(&telegramID, &repoFullName, &language)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, "", fmt.Errorf("integration %d not found", integrationID)
+		return 0, "", "", fmt.Errorf("integration %d not found", integrationID)
 	}
 	if err != nil {
-		return 0, "", fmt.Errorf("load integration owner: %w", err)
+		return 0, "", "", fmt.Errorf("load integration owner: %w", err)
 	}
-	return telegramID, repoFullName, nil
+	return telegramID, repoFullName, language, nil
 }
 
 // WriteAudit records an admin action; meta may be nil.

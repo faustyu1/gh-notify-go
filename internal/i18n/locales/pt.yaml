@@ -1,0 +1,246 @@
+# Localização em português. Mesmo conjunto de chaves do en.yaml.
+
+lang:
+  name: Português
+
+nav:
+  back: "◁ Voltar"
+
+format:
+  datetime: "02.01 15:04"
+
+btn:
+  connect_github: "🔗 Conectar GitHub"
+  repos: "🏢 Repositórios"
+  chats: "💬 Conversas"
+  status: "📊 Status"
+  settings: "⚙️ Ajustes"
+  add_to_chat: "➕ Adicionar à conversa"
+  home: "🏠 Início"
+  more_accounts: "➕ Outra conta"
+  configure_access: "🔗 Configurar acesso"
+  prev_page: "◁ Anteriores"
+  next_page: "Seguintes ▷"
+  connect_to_chat: "💬 Conectar à conversa"
+  open_github: "🔗 Abrir no GitHub"
+  install_app: "🔗 Instalar GitHub App"
+  installed: "🔄 Já instalei"
+  events: "🔔 Eventos"
+  health: "🩺 Saúde"
+  filters: "🚫 Filtros"
+  disconnect: "🗑 Desconectar"
+  set_topic: "🏷 Definir tópico"
+  unmute: "🔔 Reativar"
+  configure: "⚙️ Configurar"
+  add_to_group: "➕ Adicionar ao grupo"
+
+home:
+  greeting: "Conecte o GitHub e os eventos dos seus repositórios chegarão às suas conversas."
+  accounts: "Contas"
+  repos: "Repositórios"
+  chats: "Conversas"
+
+accounts:
+  empty: "Ainda não há contas GitHub conectadas."
+  title: "Contas GitHub"
+  hint: "Escolha onde o repositório está."
+
+repos:
+  empty: "Nenhum repositório selecionado para esta instalação.\n\nAbra as configurações do GitHub App e adicione repositórios."
+  count: "Repositórios: {n}"
+  page: "   ·   pág. {n}/{total}"
+
+repo_detail:
+  hint: "Escolha a conversa para onde enviar os eventos deste repositório."
+
+install:
+  title: "Conectando o GitHub"
+  body: "Toque no botão abaixo, escolha uma conta ou organização e marque os repositórios necessários. O GitHub trará você de volta aqui após a instalação."
+
+chat_picker:
+  empty: "O bot ainda não foi adicionado a nenhuma das suas conversas.\n\nAdicione-o a um grupo e a conversa aparecerá aqui."
+  title: "Para onde enviar"
+
+add_to_chat:
+  title: "Adicionar à conversa"
+  body: "Toque no botão e escolha um grupo — o bot aparecerá lá e enviará em seguida um botão de configuração.\n\nDepois disso o grupo aparece na lista ao conectar um repositório."
+
+result:
+  ok: "<b>Pronto</b>\n\n{name} conectado.\nOs eventos já estão fluindo — dá para ajustá-los na seção «Conversas»."
+  not_admin: "<b>Direitos de administrador necessários</b>\n\nSomente um administrador da conversa pode conectar repositórios."
+  duplicate: "<b>Já conectado</b>\n\n{name} já envia eventos para esta conversa."
+  error: "<b>Não funcionou</b>\n\nTente de novo mais tarde."
+
+chats:
+  empty: "Ainda não há conversas com repositórios conectados."
+  title: "Conversas"
+  hint: "Uma conversa com repositórios conectados pode ser silenciada ou direcionada a um tópico."
+  entry: "💬 {title} · {n}"
+
+chat_detail:
+  muted_until: "🔇 Silenciada até {time}"
+  active: "Notificações ativas"
+  topic: "Tópico: <code>{id}</code>"
+  mute: "🔇 {h}h"
+  language: "Idioma"
+
+integration_detail:
+  hint: "O que você quer configurar para este repositório?"
+
+events:
+  title: "Eventos"
+  hint: "Predefinições no topo, tipos individuais abaixo."
+  preset_all: "✅ Tudo"
+  preset_important: "⭐ Só o importante"
+  preset_none: "❌ Nada"
+
+filters:
+  title: "Filtros"
+  empty: "Nada está sendo ignorado ainda."
+  hint: "Eventos correspondentes não são enviados:"
+  entry: "✖ {kind}: {value}"
+  add: "+ {label}"
+  kind:
+    author: "👤 Autor"
+    branch: "🌿 Branch"
+    label: "🏷 Label"
+    action: "⚡ Ação"
+
+health:
+  title: "Saúde"
+  broken: "⚠️ <b>Quebrada:</b> {reason}"
+  muted_until: "🔇 Conversa silenciada até {time}"
+  last_event: "🕐 Último evento: {time}"
+  no_events: "🕐 Ainda não houve eventos"
+  sent24h: "✅ Entregues em 24h: <b>{n}</b>"
+  failed24h: "❌ Não entregues: <b>{n}</b>"
+
+status:
+  title: "Status"
+  summary: "Contas: <b>{accounts}</b> · repositórios: <b>{repos}</b> · conversas: <b>{chats}</b>"
+  delivered24h: "Entregues em 24h: <b>{n}</b>"
+  failed24h: "Não entregues: <b>{n}</b> — veja a seção «Conversas»"
+
+settings:
+  title: "Ajustes"
+  stars_line: "⭐ Estrelas: uma notificação por usuário e repositório, para sempre"
+  rate_line: "🚦 Limite de envio: <b>{n}</b> mensagens por minuto por conversa, o resto vira um resumo"
+  language: "Idioma"
+
+placeholder:
+  body: "Esta seção ainda está em obras."
+
+prompt:
+  topic: "Envie o id do tópico do fórum (um número). 0 envia para a conversa geral."
+  filter: "Envie um padrão para o filtro ({kind}). Você pode usar *."
+  topic_invalid: "⚠️ Isso não é um número — o tópico não foi alterado."
+  filter_invalid: "⚠️ O padrão está vazio ou é longo demais."
+
+greeting:
+  body: "A configuração acontece em conversa privada."
+  button: "⚙️ Configurar"
+
+delivery:
+  failed_title: "Falha na entrega"
+  failed_line: "{repo} → conversa {chat}"
+
+ev:
+  push:
+    pushed: "{user} fez push em {branch} — {commits}"
+    forced: "{user} fez push forçado em {branch} — {commits}"
+    commits:
+      one: "{n} commit"
+      other: "{n} commits"
+    omitted: "…e mais {n}"
+    commit_line: "• {sha}{author} {title}"
+    commit_author: "<i>({user})</i>"
+    compare: "Ver alterações"
+
+  pull_request:
+    merged: "{user} integrou o pull request {link}"
+    closed: "{user} fechou o pull request {link}"
+    reopened: "{user} reabriu o pull request {link}"
+    ready_for_review: "{user} marcou o pull request {link} como pronto para revisão"
+    draft: "{user} abriu um rascunho de pull request {link}"
+    opened: "{user} abriu o pull request {link}"
+    ref_pair: "<code>{head}</code> → <code>{base}</code>"
+    diffstat:
+      one: " +{additions} −{deletions} em {files} arquivo"
+      other: " +{additions} −{deletions} em {files} arquivos"
+
+  issues:
+    opened: "{user} abriu a issue {link}"
+    closed: "{user} fechou a issue {link}"
+    reopened: "{user} reabriu a issue {link}"
+
+  issue_comment:
+    line: "{user} comentou na issue {link}"
+
+  pull_request_review:
+    approved: "{user} aprovou o pull request {link}"
+    changes_requested: "{user} pediu alterações no pull request {link}"
+    commented: "{user} comentou no pull request {link}"
+
+  pull_request_review_comment:
+    line: "{user} deixou um comentário de revisão no pull request {link}"
+
+  commit_comment:
+    line: "{user} comentou o commit {sha}"
+
+  release:
+    line: "{user} lançou {link}"
+    prerelease: "pré-lançamento"
+
+  workflow_run:
+    line: "Workflow «{name}» — {verdict} · <code>{branch}</code>"
+    by: "Por {user}"
+    view_run: "Ver execução"
+
+  check_suite:
+    line: "Suíte de checks {verdict} · <code>{branch}</code>"
+
+  verdict:
+    finished: "terminou"
+    success: "passou"
+    failure: "falhou ({conclusion})"
+
+  fork:
+    line: "{user} fez fork para {link}"
+
+  member:
+    added: "{user} adicionou o colaborador {member}"
+    removed: "{user} removeu o colaborador {member}"
+
+  gollum:
+    line: "{user} atualizou a wiki:"
+    page: "{name} ({action})"
+
+  public:
+    now_public: "agora é público!"
+    opened: "{user} tornou o repositório público"
+
+  ref:
+    created: "{user} criou {ref}"
+    deleted: "{user} excluiu {ref}"
+    branch: "branch"
+    tag: "tag"
+
+  deployment:
+    started: "{user} iniciou um deploy em <code>{env}</code>"
+
+  deployment_status:
+    success: "deploy concluído em <code>{env}</code>"
+    failure: "deploy em <code>{env}</code> falhou"
+
+  star:
+    single: "{user} favoritou o repositório"
+    multi:
+      one: "+{n} estrela: {actors}"
+      other: "+{n} estrelas: {actors}"
+    total: "Total: <b>{n}</b> ⭐"
+
+  digest:
+    line: "📋 Eventos demais em um minuto — mais {n}: {list}"
+
+  detail: "Detalhes"
+  report: "Relatório"

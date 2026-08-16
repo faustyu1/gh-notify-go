@@ -2,15 +2,21 @@ package screens
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
-type home struct{ store Store }
+type home struct {
+	store Store
+	loc   *i18n.Bundle
+}
 
-func NewHome(store Store) ui.Screen { return home{store: store} }
+func NewHome(store Store, loc *i18n.Bundle) ui.Screen {
+	return home{store: store, loc: loc}
+}
 
 func (h home) Name() string { return "home" }
 
@@ -19,39 +25,40 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if err != nil {
 		return ui.View{}, err
 	}
+	l := h.loc.Localizer(s.Lang)
 
 	// A user with nothing connected gets one obvious next step instead of a
 	// menu of screens that would all be empty.
 	if accounts == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiBot, "🤖") + " <b>GitHub Notify</b>\n\n" +
-				"Подключи GitHub, и события репозиториев будут приходить в твои чаты.",
+				l.T("home.greeting"),
 			Rows: [][]ui.Button{
-				{{Label: "🔗 Подключить GitHub", Screen: "install"}},
+				{{Label: l.T("btn.connect_github"), Screen: "install"}},
 			},
 		}, nil
 	}
 
-	text := fmt.Sprintf(
-		"%s <b>GitHub Notify</b>\n\n%s Аккаунтов: <b>%d</b>\n%s Репозиториев: <b>%d</b>\n%s Чатов: <b>%d</b>",
-		render.Emoji(render.EmojiBot, "🤖"),
-		render.Emoji(render.EmojiProfile, "👤"), accounts,
-		render.Emoji(render.EmojiFile, "📁"), repos,
-		render.Emoji(render.EmojiPeople, "👥"), chats,
-	)
+	text := render.Emoji(render.EmojiBot, "🤖") + " <b>GitHub Notify</b>\n\n" +
+		render.Emoji(render.EmojiProfile, "👤") + " " + l.T("home.accounts") +
+		": <b>" + strconv.Itoa(accounts) + "</b>\n" +
+		render.Emoji(render.EmojiFile, "📁") + " " + l.T("home.repos") +
+		": <b>" + strconv.Itoa(repos) + "</b>\n" +
+		render.Emoji(render.EmojiPeople, "👥") + " " + l.T("home.chats") +
+		": <b>" + strconv.Itoa(chats) + "</b>"
 
 	return ui.View{
 		Text: text,
 		Rows: [][]ui.Button{
 			{
-				{Label: "🏢 Репозитории", Screen: "accounts"},
-				{Label: "💬 Чаты", Screen: "chats"},
+				{Label: l.T("btn.repos"), Screen: "accounts"},
+				{Label: l.T("btn.chats"), Screen: "chats"},
 			},
 			{
-				{Label: "📊 Статус", Screen: "status"},
-				{Label: "⚙️ Настройки", Screen: "settings"},
+				{Label: l.T("btn.status"), Screen: "status"},
+				{Label: l.T("btn.settings"), Screen: "settings"},
 			},
-			{{Label: "➕ Добавить в чат", Screen: "add_to_chat"}},
+			{{Label: l.T("btn.add_to_chat"), Screen: "add_to_chat"}},
 		},
 	}, nil
 }

@@ -59,6 +59,7 @@ repo_detail:
   hint: "Pick the chat this repository's events should go to."
 
 install:
+  title: "Connecting GitHub"
   body: "Tap the button below, pick an account or organization, and mark the repositories you need. GitHub will bring you back here after the install."
 
 chat_picker:
@@ -66,11 +67,12 @@ chat_picker:
   title: "Where to deliver"
 
 add_to_chat:
+  title: "Add to chat"
   body: "Tap the button and pick a group — the bot will appear there and immediately send a settings button.\n\nAfter that the group shows up in the list when you connect a repository."
 
 result:
   ok: "<b>Done</b>\n\n{name} is connected.\nEvents are already flowing — you can tune them in the “Chats” section."
-  not_admin: "<b>Administrator rights required</b>\n\nOnly a chat administrator can connect repositories to it."
+  not_admin: "<b>Administrator rights required</b>\n\nOnly a chat administrator can connect repositories to it and change its settings."
   duplicate: "<b>Already connected</b>\n\n{name} already sends events to this chat."
   error: "<b>Didn't work</b>\n\nTry again a little later."
 
@@ -81,7 +83,7 @@ chats:
   entry: "💬 {title} · {n}"
 
 chat_detail:
-  muted_until: "Muted until {time}"
+  muted_until: "🔇 Muted until {time}"
   active: "Notifications are on"
   topic: "Topic: <code>{id}</code>"
   mute: "🔇 {h}h"
@@ -113,8 +115,8 @@ health:
   title: "Health"
   broken: "<b>Broken:</b> {reason}"
   muted_until: "🔇 Chat is muted until {time}"
-  last_event: "Last event: {time}"
-  no_events: "No events yet"
+  last_event: "🕐 Last event: {time}"
+  no_events: "🕐 No events yet"
   sent24h: "✅ Delivered in 24h: <b>{n}</b>"
   failed24h: "❌ Not delivered: <b>{n}</b>"
 
@@ -126,13 +128,9 @@ status:
 
 settings:
   title: "Settings"
-  stars_title: "Star anti-spam:"
-  stars_window: "· debounce window — <b>{window}</b>"
-  stars_cooldown: "· per-author cooldown — <b>{hours}{unit}</b>"
-  stars_merge: "· several authors collapse into one message"
-  rate_limit: "Send limit: <b>{n}</b> messages per minute per chat"
+  stars_line: "⭐ Stars: one notification per user per repository — ever"
+  rate_line: "🚦 Send limit: <b>{n}</b> messages per minute per chat, the rest folds into a digest"
   language: "Language"
-  hours_short: "h"
 
 placeholder:
   body: "This section is still in the works."
@@ -165,7 +163,7 @@ ev:
       one: "{n} commit"
       other: "{n} commits"
     omitted: "…and {n} more"
-    commit_line: "• {sha} {author} {title}"
+    commit_line: "• {sha}{author} {title}"
     commit_author: "<i>({user})</i>"
     compare: "View changes"
 
@@ -178,14 +176,13 @@ ev:
     opened: "{user} opened pull request {link}"
     ref_pair: "<code>{head}</code> → <code>{base}</code>"
     diffstat:
-      one: "📁 +{additions} −{deletions} in {files} file"
-      other: "📁 +{additions} −{deletions} in {files} files"
+      one: " +{additions} −{deletions} in {files} file"
+      other: " +{additions} −{deletions} in {files} files"
 
   issues:
     opened: "{user} opened issue {link}"
     closed: "{user} closed issue {link}"
     reopened: "{user} reopened issue {link}"
-    ref: "issue"
 
   issue_comment:
     line: "{user} commented on issue {link}"
@@ -206,8 +203,9 @@ ev:
     prerelease: "pre-release"
 
   workflow_run:
-    line: "CI «{name}» {verdict}"
-    branch_line: "{commit} · <code>{branch}</code>"
+    line: "Workflow «{name}» — {verdict} · <code>{branch}</code>"
+    by: "By {user}"
+    view_run: "View run"
 
   check_suite:
     line: "Check suite {verdict} · <code>{branch}</code>"

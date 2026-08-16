@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 // maxCommitsListed caps how many commit lines a single push renders. Beyond
@@ -39,7 +40,7 @@ func init() {
 	Register("push", nil, renderPush)
 }
 
-func renderPush(raw json.RawMessage) (string, error) {
+func renderPush(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p pushPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse push: %w", err)
@@ -53,16 +54,16 @@ func renderPush(raw json.RawMessage) (string, error) {
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
 
-	verb := "запушил"
+	headline := "ev.push.pushed"
 	if p.Forced {
-		verb = "форс-запушил"
+		headline = "ev.push.forced"
 	}
-	b.WriteString(fmt.Sprintf("%s %s в %s — %s\n",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		verb,
-		"<code>"+render.Escape(branch)+"</code>",
-		pluralCommits(len(p.Commits)),
+	b.WriteString(loc.T(headline,
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"branch", "<code>"+render.Escape(branch)+"</code>",
+		"commits", loc.T("ev.push.commits", "n", len(p.Commits)),
 	))
+	b.WriteString("\n")
 
 	shown := p.Commits
 	if len(shown) > maxCommitsListed {
@@ -75,23 +76,24 @@ func renderPush(raw json.RawMessage) (string, error) {
 		title, _, _ := strings.Cut(c.Message, "\n")
 		author := ""
 		if c.Author.Username != "" {
-			author = " <i>(" + render.Escape(c.Author.Username) + ")</i>"
+			author = " " + loc.T("ev.push.commit_author",
+				"user", render.Escape(c.Author.Username))
 		}
-		b.WriteString(fmt.Sprintf("\n• %s%s %s",
-			render.Link(c.URL, shortSHA(c.ID)),
-			author,
-			render.Escape(render.Truncate(title, 72)),
+		b.WriteString("\n" + loc.T("ev.push.commit_line",
+			"sha", render.Link(c.URL, shortSHA(c.ID)),
+			"author", author,
+			"title", render.Escape(render.Truncate(title, 72)),
 		))
 	}
 	if len(shown) > 0 {
 		b.WriteString("\n</blockquote>")
 	}
 	if omitted := len(p.Commits) - len(shown); omitted > 0 {
-		b.WriteString(fmt.Sprintf("\n…и ещё %d", omitted))
+		b.WriteString("\n" + loc.T("ev.push.omitted", "n", omitted))
 	}
 
 	if p.Compare != "" {
-		b.WriteString("\n" + render.Link(p.Compare, "Посмотреть изменения"))
+		b.WriteString("\n" + render.Link(p.Compare, loc.T("ev.push.compare")))
 	}
 	return b.String(), nil
 }
@@ -101,17 +103,4 @@ func shortSHA(sha string) string {
 		return sha[:7]
 	}
 	return sha
-}
-
-// pluralCommits produces the correct Russian plural form, which depends on
-// the last digit and the teens exception.
-func pluralCommits(n int) string {
-	word := "коммитов"
-	switch {
-	case n%10 == 1 && n%100 != 11:
-		word = "коммит"
-	case n%10 >= 2 && n%10 <= 4 && (n%100 < 10 || n%100 >= 20):
-		word = "коммита"
-	}
-	return fmt.Sprintf("%d %s", n, word)
 }

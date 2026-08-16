@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/faustyu/gh-notify-go/internal/events" // register event kinds
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/tg"
 )
@@ -40,6 +41,8 @@ func (f *fakeAPI) SendMessage(
 	return &telego.Message{MessageID: len(f.sent)}, nil
 }
 
+var loc = i18n.MustNewBundle()
+
 func pushJob(t *testing.T) outbox.Job {
 	t.Helper()
 	return outbox.Job{
@@ -55,7 +58,7 @@ func pushJob(t *testing.T) outbox.Job {
 
 func TestDeliverSendsRenderedHTML(t *testing.T) {
 	api := &fakeAPI{}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	require.NoError(t, sender.Deliver(context.Background(), pushJob(t)))
 	require.Len(t, api.sent, 1)
@@ -69,7 +72,7 @@ func TestDeliverSendsRenderedHTML(t *testing.T) {
 
 func TestDeliverRoutesToForumTopic(t *testing.T) {
 	api := &fakeAPI{}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	topic := int64(77)
 	job := pushJob(t)
@@ -89,7 +92,7 @@ func TestDeliverRetriesWithoutTopicWhenTopicIsGone(t *testing.T) {
 	sender := tg.NewSender(api, func(_ context.Context, chatID int64) error {
 		clearedChat = chatID
 		return nil
-	})
+	}, loc)
 
 	topic := int64(77)
 	job := pushJob(t)
@@ -107,7 +110,7 @@ func TestDeliverRetriesWithoutCustomEmojiWhenRejected(t *testing.T) {
 		ErrorCode:   400,
 		Description: "Bad Request: can't parse entities: unsupported custom emoji",
 	}}}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	require.NoError(t, sender.Deliver(context.Background(), pushJob(t)))
 	require.Len(t, api.sent, 2)
@@ -121,7 +124,7 @@ func TestDeliverReportsKickedAsPermanent(t *testing.T) {
 		ErrorCode:   403,
 		Description: "Forbidden: bot was kicked from the supergroup chat",
 	}}}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	err := sender.Deliver(context.Background(), pushJob(t))
 	require.ErrorIs(t, err, outbox.ErrPermanent)
@@ -129,7 +132,7 @@ func TestDeliverReportsKickedAsPermanent(t *testing.T) {
 
 func TestDeliverTreatsUnknownEventAsPermanent(t *testing.T) {
 	api := &fakeAPI{}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	job := pushJob(t)
 	job.Kind = "not_a_real_event"
@@ -141,7 +144,7 @@ func TestDeliverTreatsUnknownEventAsPermanent(t *testing.T) {
 
 func TestDeliverSplitsOverlongMessages(t *testing.T) {
 	api := &fakeAPI{}
-	sender := tg.NewSender(api, nil)
+	sender := tg.NewSender(api, nil, loc)
 
 	commits := make([]string, 0, 400)
 	for i := range 400 {

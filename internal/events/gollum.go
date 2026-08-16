@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type gollumPayload struct {
@@ -27,7 +28,7 @@ func init() {
 	Register("gollum", nil, renderGollum)
 }
 
-func renderGollum(raw json.RawMessage) (string, error) {
+func renderGollum(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p gollumPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse gollum: %w", err)
@@ -38,10 +39,11 @@ func renderGollum(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s обновил вики:", render.Link(p.Sender.HTMLURL, p.Sender.Login)))
+	b.WriteString(loc.T("ev.gollum.line",
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login)))
 	for _, page := range p.Pages {
-		b.WriteString("\n• " + render.Link(page.HTMLURL,
-			render.Truncate(page.PageName+" ("+page.Action+")", 80)))
+		b.WriteString("\n• " + render.Link(page.HTMLURL, render.Truncate(loc.T("ev.gollum.page",
+			"name", page.PageName, "action", page.Action), 80)))
 	}
 	return b.String(), nil
 }

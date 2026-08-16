@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type commitCommentPayload struct {
@@ -28,7 +29,7 @@ func init() {
 	Register("commit_comment", ActionFilter{"created"}, renderCommitComment)
 }
 
-func renderCommitComment(raw json.RawMessage) (string, error) {
+func renderCommitComment(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p commitCommentPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse commit_comment: %w", err)
@@ -39,10 +40,11 @@ func renderCommitComment(raw json.RawMessage) (string, error) {
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s прокомментировал коммит %s\n\n",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		render.Link(p.Comment.HTMLURL, shortSHA(p.Comment.CommitID)),
+	b.WriteString(loc.T("ev.commit_comment.line",
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"sha", render.Link(p.Comment.HTMLURL, shortSHA(p.Comment.CommitID)),
 	))
+	b.WriteString("\n\n")
 	b.WriteString(render.Markdown(p.Comment.Body, 300))
 	return b.String(), nil
 }

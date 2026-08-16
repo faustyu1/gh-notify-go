@@ -156,3 +156,33 @@ func (s *Store) MarkIntegrationBroken(ctx context.Context, integrationID int64, 
 	}
 	return nil
 }
+
+// MarkChatIntegrationsBroken stops a whole chat's deliveries at once, for
+// when the bot is removed from it: waiting for each integration to fail its
+// own send would mean a burst of doomed requests and a burst of owner DMs.
+func (s *Store) MarkChatIntegrationsBroken(
+	ctx context.Context, telegramChatID int64, reason string,
+) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE integrations SET broken_reason = $2
+		WHERE chat_id = (SELECT id FROM chats WHERE telegram_chat_id = $1)
+		  AND broken_reason IS NULL`, telegramChatID, reason)
+	if err != nil {
+		return fmt.Errorf("mark chat integrations broken: %w", err)
+	}
+	return nil
+}
+
+// ClearChatIntegrationsBroken revives a chat's integrations when the bot is
+// back in it. Nothing else clears broken_reason, so without this a bot that
+// was removed and re-added would stay silent forever.
+func (s *Store) ClearChatIntegrationsBroken(ctx context.Context, telegramChatID int64) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE integrations SET broken_reason = NULL
+		WHERE chat_id = (SELECT id FROM chats WHERE telegram_chat_id = $1)`,
+		telegramChatID)
+	if err != nil {
+		return fmt.Errorf("clear chat integrations broken: %w", err)
+	}
+	return nil
+}

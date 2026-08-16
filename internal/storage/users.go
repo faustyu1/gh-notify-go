@@ -5,21 +5,30 @@ import (
 	"fmt"
 )
 
-func (s *Store) UpsertUser(ctx context.Context, telegramID int64) (int64, error) {
-	var id int64
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO users (telegram_id) VALUES ($1)
+// UpsertUser returns the internal id and the stored language. The language is
+// seeded from Telegram's language_code on the first insert only: once the
+// user has picked a language in the settings screen, later callbacks must
+// not reset it back to the client's locale.
+func (s *Store) UpsertUser(
+	ctx context.Context, telegramID int64, language string,
+) (id int64, storedLanguage string, err error) {
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO users (telegram_id, language) VALUES ($1, $2)
 		ON CONFLICT (telegram_id) DO UPDATE SET telegram_id = EXCLUDED.telegram_id
-		RETURNING id`, telegramID).Scan(&id)
+		RETURNING id, language`, telegramID, language).Scan(&id, &storedLanguage)
 	if err != nil {
-		return 0, fmt.Errorf("upsert user: %w", err)
+		return 0, "", fmt.Errorf("upsert user: %w", err)
 	}
-	return id, nil
+	return id, storedLanguage, nil
 }
 
 // UpsertChat refreshes the cached title on every call, because a group can be
-// renamed and a stale title in the chat picker is confusing.
-func (s *Store) UpsertChat(ctx context.Context, telegramChatID int64, title, kind string) (int64, error) {
+// renamed and a stale title in the chat picker is confusing. A chat has no
+// language of its own: notifications resolve the integration owner's locale
+// at claim time.
+func (s *Store) UpsertChat(
+	ctx context.Context, telegramChatID int64, title, kind string,
+) (int64, error) {
 	var id int64
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO chats (telegram_chat_id, title, kind) VALUES ($1, $2, $3)
@@ -32,22 +41,13 @@ func (s *Store) UpsertChat(ctx context.Context, telegramChatID int64, title, kin
 	return id, nil
 }
 
-func (s *Store) UpsertInstallation(
-	ctx context.Context, githubInstallationID int64, login, accountType string, userID int64,
-) (int64, error) {
-	var id int64
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO installations
-			(github_installation_id, account_login, account_type, user_id)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (github_installation_id) DO UPDATE
-		SET account_login = EXCLUDED.account_login,
-		    account_type  = EXCLUDED.account_type,
-		    user_id       = EXCLUDED.user_id,
-		    suspended_at  = NULL
-		RETURNING id`, githubInstallationID, login, accountType, userID).Scan(&id)
+// SetUserLanguage records an explicit language choice for the private UI and
+// for the user's integrations' notifications.
+func (s *Store) SetUserLanguage(ctx context.Context, userID int64, language string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE users SET language = $2 WHERE id = $1`, userID, language)
 	if err != nil {
-		return 0, fmt.Errorf("upsert installation: %w", err)
+		return fmt.Errorf("set user language: %w", err)
 	}
-	return id, nil
+	return nil
 }

@@ -129,7 +129,7 @@ func (s *TokenSource) mint(ctx context.Context, installationID int64) (string, t
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("mint installation token: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusCreated, http.StatusOK:

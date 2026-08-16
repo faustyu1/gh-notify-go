@@ -55,6 +55,7 @@ repo_detail:
   hint: "Выбери чат, куда присылать события этого репозитория."
 
 install:
+  title: "Подключение GitHub"
   body: "Нажми кнопку ниже, выбери аккаунт или организацию и отметь нужные репозитории. После установки GitHub вернёт тебя обратно сюда."
 
 chat_picker:
@@ -62,11 +63,12 @@ chat_picker:
   title: "Куда присылать"
 
 add_to_chat:
+  title: "Добавить в чат"
   body: "Нажми кнопку и выбери группу — бот появится там и сразу пришлёт кнопку настройки.\n\nПосле этого группа появится в списке при подключении репозитория."
 
 result:
   ok: "<b>Готово</b>\n\n{name} подключён.\nСобытия уже идут — настроить их можно в разделе «Чаты»."
-  not_admin: "<b>Нужны права администратора</b>\n\nПодключать репозитории к чату может только его администратор."
+  not_admin: "<b>Нужны права администратора</b>\n\nПодключать репозитории к чату и менять его настройки может только его администратор."
   duplicate: "<b>Уже подключено</b>\n\n{name} уже присылает события в этот чат."
   error: "<b>Не получилось</b>\n\nПопробуй ещё раз чуть позже."
 
@@ -122,13 +124,9 @@ status:
 
 settings:
   title: "Настройки"
-  stars_title: "Анти-спам звёзд:"
-  stars_window: "· окно накопления — <b>{window}</b>"
-  stars_cooldown: "· кулдаун на автора — <b>{hours}{unit}</b>"
-  stars_merge: "· несколько авторов складываются в одно сообщение"
-  rate_limit: "Лимит отправки: <b>{n}</b> сообщений в минуту на чат"
+  stars_line: "⭐ Звёзды: одно уведомление на пользователя в репозитории — навсегда"
+  rate_line: "🚦 Лимит отправки: <b>{n}</b> сообщений в минуту на чат, остальное сворачивается в дайджест"
   language: "Язык"
-  hours_short: "ч"
 
 placeholder:
   body: "Этот раздел ещё в работе."
@@ -156,7 +154,7 @@ ev:
       few: "{n} коммита"
       many: "{n} коммитов"
     omitted: "…и ещё {n}"
-    commit_line: "• {sha} {author} {title}"
+    commit_line: "• {sha}{author} {title}"
     commit_author: "<i>({user})</i>"
     compare: "Посмотреть изменения"
 
@@ -169,15 +167,14 @@ ev:
     opened: "{user} открыл пул-реквест {link}"
     ref_pair: "<code>{head}</code> → <code>{base}</code>"
     diffstat:
-      one: "📁 +{additions} −{deletions} в {files} файле"
-      few: "📁 +{additions} −{deletions} в {files} файлах"
-      many: "📁 +{additions} −{deletions} в {files} файлах"
+      one: " +{additions} −{deletions} в {files} файле"
+      few: " +{additions} −{deletions} в {files} файлах"
+      many: " +{additions} −{deletions} в {files} файлах"
 
   issues:
     opened: "{user} открыл issue {link}"
     closed: "{user} закрыл issue {link}"
     reopened: "{user} переоткрыл issue {link}"
-    ref: "issue"
 
   issue_comment:
     line: "{user} прокомментировал issue {link}"
@@ -198,8 +195,9 @@ ev:
     prerelease: "pre-release"
 
   workflow_run:
-    line: "CI «{name}» {verdict}"
-    branch_line: "{commit} · <code>{branch}</code>"
+    line: "Workflow «{name}» — {verdict} · <code>{branch}</code>"
+    by: "Запустил {user}"
+    view_run: "Подробнее"
 
   check_suite:
     line: "Чек-сьют {verdict} · <code>{branch}</code>"

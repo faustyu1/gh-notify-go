@@ -17,9 +17,9 @@ type ignoreFilter struct {
 // Missing subjects are empty strings and never match.
 func eventSubjects(kind string, raw json.RawMessage) (author, branch, label, action string) {
 	var p struct {
-		Ref      string `json:"ref"`
-		Action   string `json:"action"`
-		Repo     struct {
+		Ref    string `json:"ref"`
+		Action string `json:"action"`
+		Repo   struct {
 			FullName string `json:"full_name"`
 		} `json:"repository"`
 		Sender struct {

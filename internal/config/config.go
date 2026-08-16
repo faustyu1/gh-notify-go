@@ -9,13 +9,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Bot struct {
 	Token    string
 	Username string
-	OwnerID  int64
 }
 
 type Database struct {
@@ -73,9 +71,6 @@ func applyEnv(cfg *Config) error {
 	cfg.HTTP.PublicURL = os.Getenv("PUBLIC_URL")
 
 	var err error
-	if cfg.Bot.OwnerID, err = envInt64("BOT_OWNER_ID"); err != nil {
-		return err
-	}
 	if cfg.GitHub.AppID, err = envInt64("GITHUB_APP_ID"); err != nil {
 		return err
 	}
@@ -103,18 +98,6 @@ func envInt64(key string) (int64, error) {
 func envInt(key string) (int, error) {
 	v, err := envInt64(key)
 	return int(v), err
-}
-
-func envDuration(key string) (time.Duration, error) {
-	raw := os.Getenv(key)
-	if raw == "" {
-		return 0, nil
-	}
-	v, err := time.ParseDuration(raw)
-	if err != nil {
-		return 0, fmt.Errorf("%s: %w", key, err)
-	}
-	return v, nil
 }
 
 func applyDefaults(cfg *Config) {

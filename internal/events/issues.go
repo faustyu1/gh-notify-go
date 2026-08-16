@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type issuesPayload struct {
@@ -33,24 +34,24 @@ func init() {
 	Register("issues", ActionFilter{"opened", "closed", "reopened"}, renderIssues)
 }
 
-func renderIssues(raw json.RawMessage) (string, error) {
+func renderIssues(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p issuesPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse issues: %w", err)
 	}
 
-	emoji, verb := issuesHeadline(p.Action)
+	emoji, key := issuesHeadline(p.Action)
 
 	var b strings.Builder
 	b.WriteString(emoji)
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s %s issue %s\n\n",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		verb,
-		render.Link(p.Issue.HTMLURL, fmt.Sprintf("#%d", p.Issue.Number)),
+	b.WriteString(loc.T(key,
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"link", render.Link(p.Issue.HTMLURL, fmt.Sprintf("#%d", p.Issue.Number)),
 	))
+	b.WriteString("\n\n")
 	b.WriteString("<b>" + render.Escape(render.Truncate(p.Issue.Title, 120)) + "</b>")
 	if body := strings.TrimSpace(p.Issue.Body); body != "" {
 		b.WriteString("\n\n" + render.Markdown(body, 500))
@@ -61,10 +62,10 @@ func renderIssues(raw json.RawMessage) (string, error) {
 func issuesHeadline(action string) (string, string) {
 	switch action {
 	case "closed":
-		return render.Emoji(render.EmojiCheck, "✅"), "закрыл"
+		return render.Emoji(render.EmojiCheck, "✅"), "ev.issues.closed"
 	case "reopened":
-		return render.Emoji(render.EmojiLockOpen, "🔓"), "переоткрыл"
+		return render.Emoji(render.EmojiLockOpen, "🔓"), "ev.issues.reopened"
 	default:
-		return render.Emoji(render.EmojiMegaphone, "📣"), "открыл"
+		return render.Emoji(render.EmojiMegaphone, "📣"), "ev.issues.opened"
 	}
 }

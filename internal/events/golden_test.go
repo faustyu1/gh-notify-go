@@ -10,12 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/faustyu/gh-notify-go/internal/events"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 // -update rewrites the golden files. Review the diff before committing:
 // a golden test only protects you if the expected output is read by a human
 // at least once.
 var update = flag.Bool("update", false, "rewrite golden files")
+
+// Goldens are rendered in the default locale; the ru wording is covered by
+// the locale parity tests in internal/i18n.
+var goldenLoc = i18n.MustNewBundle().Localizer(i18n.Default)
 
 // assertGolden renders testdata/<name>.json and compares it to
 // testdata/<name>.golden.html.
@@ -25,7 +30,7 @@ func assertGolden(t *testing.T, kind events.Kind, name string) {
 	payload, err := os.ReadFile(filepath.Join("testdata", name+".json"))
 	require.NoError(t, err)
 
-	got, err := events.Render(kind, json.RawMessage(payload))
+	got, err := events.Render(kind, goldenLoc, json.RawMessage(payload))
 	require.NoError(t, err)
 
 	goldenPath := filepath.Join("testdata", name+".golden.html")

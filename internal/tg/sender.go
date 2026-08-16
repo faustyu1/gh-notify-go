@@ -15,6 +15,7 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/events"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 )
 
@@ -31,18 +32,23 @@ type API interface {
 
 type Sender struct {
 	api API
+	loc *i18n.Bundle
 
 	// onTopicMissing clears a forum topic that Telegram says no longer
 	// exists, so later events go to the General topic instead of failing.
 	onTopicMissing func(ctx context.Context, chatID int64) error
 }
 
-func NewSender(api API, onTopicMissing func(ctx context.Context, chatID int64) error) *Sender {
-	return &Sender{api: api, onTopicMissing: onTopicMissing}
+func NewSender(
+	api API, onTopicMissing func(ctx context.Context, chatID int64) error, loc *i18n.Bundle,
+) *Sender {
+	return &Sender{api: api, loc: loc, onTopicMissing: onTopicMissing}
 }
 
 func (s *Sender) Deliver(ctx context.Context, job outbox.Job) error {
-	html, err := events.Render(events.Kind(job.Kind), job.Payload)
+	// Notifications render in the chat's language, not the sender's.
+	loc := s.loc.Localizer(job.Language)
+	html, err := events.Render(events.Kind(job.Kind), loc, job.Payload)
 	if err != nil {
 		// An unrenderable payload will not become renderable later.
 		return fmt.Errorf("%w: render %s: %v", outbox.ErrPermanent, job.Kind, err)

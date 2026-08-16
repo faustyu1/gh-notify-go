@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type pullRequestReviewPayload struct {
@@ -32,25 +33,25 @@ func init() {
 	Register("pull_request_review", ActionFilter{"submitted"}, renderPullRequestReview)
 }
 
-func renderPullRequestReview(raw json.RawMessage) (string, error) {
+func renderPullRequestReview(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p pullRequestReviewPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse pull_request_review: %w", err)
 	}
 
-	emoji, verb := reviewHeadline(p.Review.State)
+	emoji, key := reviewHeadline(p.Review.State)
 
 	var b strings.Builder
 	b.WriteString(emoji)
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(fmt.Sprintf("%s %s пул-реквест %s\n",
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		verb,
-		render.Link(p.PullRequest.HTMLURL, fmt.Sprintf("#%d «%s»",
+	b.WriteString(loc.T(key,
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"link", render.Link(p.PullRequest.HTMLURL, fmt.Sprintf("#%d «%s»",
 			p.Number, render.Truncate(p.PullRequest.Title, 60))),
 	))
+	b.WriteString("\n")
 	if body := strings.TrimSpace(p.Review.Body); body != "" {
 		b.WriteString("\n" + render.Markdown(body, 300))
 	}
@@ -62,10 +63,10 @@ func renderPullRequestReview(raw json.RawMessage) (string, error) {
 func reviewHeadline(state string) (string, string) {
 	switch state {
 	case "approved":
-		return render.Emoji(render.EmojiCheck, "✅"), "апрувнул"
+		return render.Emoji(render.EmojiCheck, "✅"), "ev.pull_request_review.approved"
 	case "changes_requested":
-		return render.Emoji(render.EmojiCross, "❌"), "запросил правки в"
+		return render.Emoji(render.EmojiCross, "❌"), "ev.pull_request_review.changes_requested"
 	default:
-		return render.Emoji(render.EmojiWrite, "✍"), "прокомментировал"
+		return render.Emoji(render.EmojiWrite, "✍"), "ev.pull_request_review.commented"
 	}
 }

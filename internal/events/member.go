@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
 type memberPayload struct {
@@ -26,22 +27,20 @@ func init() {
 	Register("member", ActionFilter{"added", "removed"}, renderMember)
 }
 
-func renderMember(raw json.RawMessage) (string, error) {
+func renderMember(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	var p memberPayload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return "", fmt.Errorf("parse member: %w", err)
 	}
 
-	verb := "добавил"
+	key := "ev.member.added"
 	if p.Action == "removed" {
-		verb = "исключил"
+		key = "ev.member.removed"
 	}
 
-	return fmt.Sprintf("%s <b>%s</b>\n%s %s соавтора %s",
-		render.Emoji(render.EmojiPeople, "👤"),
-		render.Escape(p.Repo.FullName),
-		render.Link(p.Sender.HTMLURL, p.Sender.Login),
-		verb,
-		render.Link(p.Member.HTMLURL, p.Member.Login),
+	return render.Emoji(render.EmojiPeople, "👤") +
+		" <b>" + render.Escape(p.Repo.FullName) + "</b>\n" + loc.T(key,
+		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
+		"member", render.Link(p.Member.HTMLURL, p.Member.Login),
 	), nil
 }

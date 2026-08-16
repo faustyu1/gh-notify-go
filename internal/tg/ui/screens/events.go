@@ -6,33 +6,34 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/events"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
 // eventPresets sits above the individual toggles because tapping eleven
 // buttons is not an interface.
 var eventPresets = []struct {
-	label  string
+	key    string
 	preset string
 }{
-	{"✅ Всё", "all"},
-	{"⭐ Только важное", "important"},
-	{"❌ Ничего", "none"},
+	{"events.preset_all", "all"},
+	{"events.preset_important", "important"},
+	{"events.preset_none", "none"},
 }
 
-// importantKinds is the «Только важное» preset: what a chat usually wants.
-var importantKinds = map[events.Kind]bool{
-	"pull_request": true, "issues": true, "issue_comment": true,
-	"pull_request_review": true, "release": true, "workflow_run": true,
+type eventsScreen struct {
+	store Store
+	loc   *i18n.Bundle
 }
 
-type eventsScreen struct{ store Store }
-
-func NewEvents(store Store) ui.Screen { return eventsScreen{store: store} }
+func NewEvents(store Store, loc *i18n.Bundle) ui.Screen {
+	return eventsScreen{store: store, loc: loc}
+}
 
 func (e eventsScreen) Name() string { return "events" }
 
 func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) {
+	l := e.loc.Localizer(s.Lang)
 	integration := s.Params["integration"]
 
 	settings, err := e.store.EventSettings(ctx, mustAtoi64(integration))
@@ -45,7 +46,7 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 	var presetRow []ui.Button
 	for _, p := range eventPresets {
 		presetRow = append(presetRow, ui.Button{
-			Label:  p.label,
+			Label:  l.T(p.key),
 			Screen: "a_ev_preset",
 			Params: ui.Params{"integration": integration, "preset": p.preset},
 		})
@@ -62,7 +63,7 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 			mark = "❌"
 		}
 		rows = append(rows, []ui.Button{{
-			Label: mark + " " + string(kind),
+			Label:  mark + " " + string(kind),
 			Screen: "a_ev_toggle",
 			Params: ui.Params{
 				"integration": integration,
@@ -73,9 +74,8 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 	}
 
 	return ui.View{
-		Text: render.Emoji(render.EmojiBell, "🔔") + " <b>События</b>\n\n" +
-			render.Escape(s.Params["name"]) +
-			fmt.Sprintf("\n\nПресеты сверху, отдельные типы ниже."),
+		Text: render.Emoji(render.EmojiBell, "🔔") + " <b>" + l.T("events.title") + "</b>\n\n" +
+			render.Escape(s.Params["name"]) + "\n\n" + l.T("events.hint"),
 		Rows: rows,
 	}, nil
 }

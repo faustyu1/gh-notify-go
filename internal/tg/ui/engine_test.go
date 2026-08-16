@@ -2,11 +2,13 @@ package ui_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
+	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/storage/testhelper"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
@@ -36,10 +38,10 @@ func newEngine(t *testing.T) (*ui.Engine, *pgxpool.Pool, int64) {
 	require.NoError(t, pool.QueryRow(ctx,
 		`INSERT INTO users (telegram_id) VALUES (555) RETURNING id`).Scan(&userID))
 
-	engine := ui.NewEngine(ui.NewPostgresNav(pool))
+	engine := ui.NewEngine(ui.NewPostgresNav(pool), i18n.MustNewBundle())
 	engine.Register(
 		stubScreen{name: "home", rows: [][]ui.Button{{
-			{Label: "Репозитории", Screen: "repos"},
+			{Label: "Repositories", Screen: "repos"},
 		}}},
 		stubScreen{name: "repos"},
 		stubScreen{name: "repo_detail"},
@@ -51,7 +53,7 @@ func TestOpenRendersScreenAndPushesStack(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	view, err := engine.Open(ctx, userID, 555, "home", nil)
+	view, err := engine.Open(ctx, userID, 555, "home", nil, "en")
 	require.NoError(t, err)
 	require.Equal(t, "home:", view.Text)
 }
@@ -60,12 +62,12 @@ func TestHomeHasNoBackButton(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	view, err := engine.Open(ctx, userID, 555, "home", nil)
+	view, err := engine.Open(ctx, userID, 555, "home", nil, "en")
 	require.NoError(t, err)
 
 	for _, row := range view.Rows {
 		for _, b := range row {
-			require.NotEqual(t, ui.BackButtonLabel, b.Label)
+			require.NotEqual(t, engine.BackButtonLabel("en"), b.Label)
 		}
 	}
 }
@@ -74,33 +76,33 @@ func TestDeeperScreensGetBackButton(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	_, err := engine.Open(ctx, userID, 555, "home", nil)
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
 	require.NoError(t, err)
 
-	view, err := engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"})
+	view, err := engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"}, "en")
 	require.NoError(t, err)
 	require.Equal(t, "repos:7", view.Text)
 
 	last := view.Rows[len(view.Rows)-1]
-	require.Equal(t, ui.BackButtonLabel, last[0].Label)
+	require.Equal(t, engine.BackButtonLabel("en"), last[0].Label)
 }
 
 func TestBackReturnsToPreviousScreenWithItsParams(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	_, err := engine.Open(ctx, userID, 555, "home", nil)
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
 	require.NoError(t, err)
-	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"})
+	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"}, "en")
 	require.NoError(t, err)
-	_, err = engine.Open(ctx, userID, 555, "repo_detail", ui.Params{"id": "99"})
+	_, err = engine.Open(ctx, userID, 555, "repo_detail", ui.Params{"id": "99"}, "en")
 	require.NoError(t, err)
 
-	view, err := engine.Back(ctx, userID, 555)
+	view, err := engine.Back(ctx, userID, 555, "en")
 	require.NoError(t, err)
 	require.Equal(t, "repos:7", view.Text)
 
-	view, err = engine.Back(ctx, userID, 555)
+	view, err = engine.Back(ctx, userID, 555, "en")
 	require.NoError(t, err)
 	require.Equal(t, "home:", view.Text)
 }
@@ -109,10 +111,10 @@ func TestBackAtHomeStaysAtHome(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	_, err := engine.Open(ctx, userID, 555, "home", nil)
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
 	require.NoError(t, err)
 
-	view, err := engine.Back(ctx, userID, 555)
+	view, err := engine.Back(ctx, userID, 555, "en")
 	require.NoError(t, err)
 	require.Equal(t, "home:", view.Text)
 }
@@ -160,7 +162,7 @@ func TestOpenUnknownScreenIsAnError(t *testing.T) {
 	ctx := context.Background()
 	engine, _, userID := newEngine(t)
 
-	_, err := engine.Open(ctx, userID, 555, "nope", nil)
+	_, err := engine.Open(ctx, userID, 555, "nope", nil, "en")
 	require.ErrorIs(t, err, ui.ErrUnknownScreen)
 }
 
@@ -177,4 +179,56 @@ func TestAnchorMessageIDRoundTrips(t *testing.T) {
 	id, err = nav.AnchorMessageID(ctx, userID)
 	require.NoError(t, err)
 	require.Equal(t, 4242, id)
+}
+
+// errForbidden stands in for the real guard's refusal.
+var errForbidden = errors.New("forbidden")
+
+func TestGuardRefusedScreenNeverOpensAndStaysOffTheStack(t *testing.T) {
+	ctx := context.Background()
+	engine, pool, userID := newEngine(t)
+	engine.WithGuard(func(_ context.Context, _ int64, screen string, _ ui.Params) error {
+		if screen == "repos" {
+			return errForbidden
+		}
+		return nil
+	})
+
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
+	require.NoError(t, err)
+
+	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"}, "en")
+	require.ErrorIs(t, err, errForbidden)
+
+	// A refused screen must leave the navigation stack where it was.
+	var stack string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT stack::text FROM ui_nav WHERE user_id = $1`, userID).Scan(&stack))
+	require.NotContains(t, stack, "repos")
+}
+
+// Rights can be lost while a screen sits on the stack; the back button must
+// not be a way around that.
+func TestGuardIsRecheckedOnBack(t *testing.T) {
+	ctx := context.Background()
+	engine, _, userID := newEngine(t)
+
+	allowed := true
+	engine.WithGuard(func(_ context.Context, _ int64, screen string, _ ui.Params) error {
+		if screen == "repos" && !allowed {
+			return errForbidden
+		}
+		return nil
+	})
+
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
+	require.NoError(t, err)
+	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"}, "en")
+	require.NoError(t, err)
+	_, err = engine.Open(ctx, userID, 555, "repo_detail", ui.Params{"id": "99"}, "en")
+	require.NoError(t, err)
+
+	allowed = false
+	_, err = engine.Back(ctx, userID, 555, "en")
+	require.ErrorIs(t, err, errForbidden)
 }

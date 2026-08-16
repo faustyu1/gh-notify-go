@@ -83,7 +83,7 @@ func TestClaimInstallationAssignsOwner(t *testing.T) {
 	installations := service.NewInstallations(store,
 		fakeInstallationInfo{account: ghapp.Account{Login: "faustyu1", Type: "User"}})
 
-	userID, err := store.UpsertUser(ctx, 555)
+	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
 	require.NoError(t, installations.ClaimInstallation(ctx, 154234486, userID))
 
