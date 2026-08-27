@@ -30,7 +30,8 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if len(installations) == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("accounts.empty"),
-			Rows: [][]ui.Button{{{Label: l.T("btn.connect_github"), Screen: "install"}}},
+			Rows: [][]ui.Button{{{Label: l.T("btn.connect_github"),
+				Icon: render.EmojiLink, Screen: "install"}}},
 		}, nil
 	}
 

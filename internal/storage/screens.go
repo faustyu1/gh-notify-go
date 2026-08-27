@@ -139,7 +139,17 @@ func (s *Store) CountsForUser(ctx context.Context, userID int64) (int, int, int,
 	return accounts, repos, chats, nil
 }
 
+// ClearTopic sends a chat's deliveries back to the General topic after
+// Telegram reports the current one gone. The remembered topic goes with it,
+// so the picker stops offering a topic nobody can post to.
 func (s *Store) ClearTopic(ctx context.Context, telegramChatID int64) error {
+	if _, err := s.pool.Exec(ctx, `
+		DELETE FROM chat_topics ct
+		USING chats c
+		WHERE ct.chat_id = c.id AND c.telegram_chat_id = $1 AND ct.topic_id = c.topic_id`,
+		telegramChatID); err != nil {
+		return fmt.Errorf("forget cleared topic: %w", err)
+	}
 	_, err := s.pool.Exec(ctx,
 		`UPDATE chats SET topic_id = NULL WHERE telegram_chat_id = $1`, telegramChatID)
 	if err != nil {

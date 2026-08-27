@@ -32,6 +32,21 @@ action (cached for a minute), not at the moment the screen is drawn. Viewing is
 covered by the same check: the chat screen and the event, filter, and health
 screens are all behind it.
 
+Disconnecting is narrower than that. A repository is unplugged only by the
+administrator who connected it, or by the chat's owner — one administrator
+cannot remove another's integration, and the owner is what keeps a chat from
+being stuck with an integration whose author has left.
+
+## Forum topics
+
+Telegram offers bots no way to list a forum's topics, so the picker is built
+from what the bot has seen: a topic created while it was in the chat, a rename,
+and any message posted inside a topic. A topic older than the bot becomes
+visible as soon as someone sends `/start` inside it — commands reach the bot
+whatever its privacy setting, ordinary messages only with privacy mode off.
+Failing that, the picker can create a topic itself, which needs the
+**Manage topics** admin right.
+
 ## Environment variables
 
 | Variable | Purpose |

@@ -61,8 +61,9 @@ func (h healthScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 	return ui.View{
 		Text: text,
 		Rows: [][]ui.Button{
-			{{Label: l.T("btn.events"), Screen: "events", Params: s.Params}},
-			{{Label: l.T("btn.home"), Screen: "home"}},
+			{{Label: l.T("btn.events"), Icon: render.EmojiBell,
+				Screen: "events", Params: s.Params}},
+			{{Label: l.T("btn.home"), Icon: render.EmojiHouse, Screen: "home"}},
 		},
 	}, nil
 }

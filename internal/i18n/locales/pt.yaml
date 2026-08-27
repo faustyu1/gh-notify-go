@@ -4,34 +4,36 @@ lang:
   name: Português
 
 nav:
-  back: "◁ Voltar"
+  back: "Voltar"
 
 format:
   datetime: "02.01 15:04"
 
 btn:
-  connect_github: "🔗 Conectar GitHub"
+  connect_github: "Conectar GitHub"
   repos: "🏢 Repositórios"
-  chats: "💬 Conversas"
-  status: "📊 Status"
-  settings: "⚙️ Ajustes"
+  chats: "Conversas"
+  status: "Status"
+  settings: "Ajustes"
   add_to_chat: "➕ Adicionar à conversa"
-  home: "🏠 Início"
+  home: "Início"
   more_accounts: "➕ Outra conta"
-  configure_access: "🔗 Configurar acesso"
+  configure_access: "Configurar acesso"
   prev_page: "◁ Anteriores"
   next_page: "Seguintes ▷"
-  connect_to_chat: "💬 Conectar à conversa"
-  open_github: "🔗 Abrir no GitHub"
-  install_app: "🔗 Instalar GitHub App"
-  installed: "🔄 Já instalei"
-  events: "🔔 Eventos"
+  connect_to_chat: "Conectar à conversa"
+  open_github: "Abrir no GitHub"
+  install_app: "Instalar GitHub App"
+  installed: "Já instalei"
+  events: "Eventos"
   health: "🩺 Saúde"
   filters: "🚫 Filtros"
-  disconnect: "🗑 Desconectar"
-  set_topic: "🏷 Definir tópico"
-  unmute: "🔔 Reativar"
-  configure: "⚙️ Configurar"
+  disconnect: "Desconectar"
+  set_topic: "Definir tópico"
+  topic_general: "Conversa geral"
+  topic_new: "➕ Novo tópico"
+  unmute: "Reativar"
+  configure: "Configurar"
   add_to_group: "➕ Adicionar ao grupo"
 
 home:
@@ -68,6 +70,8 @@ add_to_chat:
 result:
   ok: "<b>Pronto</b>\n\n{name} conectado.\nOs eventos já estão fluindo — dá para ajustá-los na seção «Conversas»."
   not_admin: "<b>Direitos de administrador necessários</b>\n\nSomente um administrador da conversa pode conectar repositórios."
+  not_owner: "<b>Conectado por outro administrador</b>\n\nSó quem conectou este repositório — ou o dono da conversa — pode desconectá-lo."
+  topic_failed: "<b>Tópico não criado</b>\n\nA conversa precisa de tópicos ativados e o bot precisa do direito “Gerenciar tópicos”."
   duplicate: "<b>Já conectado</b>\n\n{name} já envia eventos para esta conversa."
   error: "<b>Não funcionou</b>\n\nTente de novo mais tarde."
 
@@ -75,7 +79,7 @@ chats:
   empty: "Ainda não há conversas com repositórios conectados."
   title: "Conversas"
   hint: "Uma conversa com repositórios conectados pode ser silenciada ou direcionada a um tópico."
-  entry: "💬 {title} · {n}"
+  entry: "{title} · {n}"
 
 chat_detail:
   muted_until: "🔇 Silenciada até {time}"
@@ -84,21 +88,32 @@ chat_detail:
   mute: "🔇 {h}h"
   language: "Idioma"
 
+# The forum topic picker. Telegram cannot list a chat's topics, so this
+# screen offers the ones the bot has seen plus a topic it creates itself.
+topics:
+  title: "Tópico"
+  hint: "Escolha para onde vão as notificações desta conversa. Um tópico só aparece depois que o bot o vê."
+  empty: "Nenhum tópico visto ainda. Envie /start dentro do tópico desejado e abra esta tela de novo — ou deixe o bot criar um."
+  unnamed: "Tópico {id}"
+  # Name of the topic the bot creates on request.
+  new_name: "GitHub"
+
 integration_detail:
   hint: "O que você quer configurar para este repositório?"
+  not_owner: "Outro administrador conectou este repositório, então desconectá-lo cabe a ele ou ao dono da conversa."
 
 events:
   title: "Eventos"
   hint: "Predefinições no topo, tipos individuais abaixo."
-  preset_all: "✅ Tudo"
+  preset_all: "Tudo"
   preset_important: "⭐ Só o importante"
-  preset_none: "❌ Nada"
+  preset_none: "Nada"
 
 filters:
   title: "Filtros"
   empty: "Nada está sendo ignorado ainda."
   hint: "Eventos correspondentes não são enviados:"
-  entry: "✖ {kind}: {value}"
+  entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
     author: "👤 Autor"
@@ -131,14 +146,12 @@ placeholder:
   body: "Esta seção ainda está em obras."
 
 prompt:
-  topic: "Envie o id do tópico do fórum (um número). 0 envia para a conversa geral."
   filter: "Envie um padrão para o filtro ({kind}). Você pode usar *."
-  topic_invalid: "⚠️ Isso não é um número — o tópico não foi alterado."
   filter_invalid: "⚠️ O padrão está vazio ou é longo demais."
 
 greeting:
   body: "A configuração acontece em conversa privada."
-  button: "⚙️ Configurar"
+  button: "Configurar"
 
 delivery:
   failed_title: "Falha na entrega"

@@ -10,6 +10,7 @@ import (
 	"github.com/mymmrac/telego"
 	"github.com/mymmrac/telego/telegoapi"
 
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
 
@@ -59,6 +60,19 @@ func (a *Anchor) Show(ctx context.Context, userID, telegramID int64, view ui.Vie
 		if isNotModified(err) {
 			return nil
 		}
+		if isCustomEmojiRefused(err) {
+			text, stripped := plain(view.Text, markup)
+			if _, retryErr := a.api.EditMessageText(ctx, &telego.EditMessageTextParams{
+				ChatID:             telego.ChatID{ID: telegramID},
+				MessageID:          messageID,
+				Text:               text,
+				ParseMode:          telego.ModeHTML,
+				ReplyMarkup:        stripped,
+				LinkPreviewOptions: &telego.LinkPreviewOptions{IsDisabled: true},
+			}); retryErr == nil {
+				return nil
+			}
+		}
 		// Any other refusal means this message id is unusable — the user
 		// deleted the anchor, it aged out, Telegram worded the reason
 		// differently. Whatever the wording, the interface must not go dead:
@@ -102,13 +116,18 @@ func (a *Anchor) send(
 	ctx context.Context, userID, telegramID int64,
 	view ui.View, markup *telego.InlineKeyboardMarkup,
 ) error {
-	sent, err := a.api.SendMessage(ctx, &telego.SendMessageParams{
+	params := &telego.SendMessageParams{
 		ChatID:             telego.ChatID{ID: telegramID},
 		Text:               view.Text,
 		ParseMode:          telego.ModeHTML,
 		ReplyMarkup:        markup,
 		LinkPreviewOptions: &telego.LinkPreviewOptions{IsDisabled: true},
-	})
+	}
+	sent, err := a.api.SendMessage(ctx, params)
+	if err != nil && isCustomEmojiRefused(err) {
+		params.Text, params.ReplyMarkup = plain(view.Text, markup)
+		sent, err = a.api.SendMessage(ctx, params)
+	}
 	if err != nil {
 		return fmt.Errorf("send anchor: %w", err)
 	}
@@ -127,7 +146,7 @@ func Keyboard(
 		for _, button := range row {
 			if button.URL != "" {
 				out = append(out, telego.InlineKeyboardButton{
-					Text: button.Label, URL: button.URL,
+					Text: button.Label, IconCustomEmojiID: button.Icon, URL: button.URL,
 				})
 				continue
 			}
@@ -136,7 +155,7 @@ func Keyboard(
 				return nil, err
 			}
 			out = append(out, telego.InlineKeyboardButton{
-				Text: button.Label, CallbackData: key,
+				Text: button.Label, IconCustomEmojiID: button.Icon, CallbackData: key,
 			})
 		}
 		if len(out) > 0 {
@@ -144,6 +163,32 @@ func Keyboard(
 		}
 	}
 	return &telego.InlineKeyboardMarkup{InlineKeyboard: rows}, nil
+}
+
+// plain strips everything that needs custom emoji: the tg-emoji tags in the
+// text and the icon on every button. A bot whose owner has no Premium — or a
+// chat that refuses custom emoji — gets the interface looking ordinary rather
+// than getting no interface at all.
+func plain(text string, markup *telego.InlineKeyboardMarkup) (string, *telego.InlineKeyboardMarkup) {
+	if markup == nil {
+		return render.Strip(text), nil
+	}
+	rows := make([][]telego.InlineKeyboardButton, 0, len(markup.InlineKeyboard))
+	for _, row := range markup.InlineKeyboard {
+		out := make([]telego.InlineKeyboardButton, 0, len(row))
+		for _, button := range row {
+			button.IconCustomEmojiID = ""
+			out = append(out, button)
+		}
+		rows = append(rows, out)
+	}
+	return render.Strip(text), &telego.InlineKeyboardMarkup{InlineKeyboard: rows}
+}
+
+// isCustomEmojiRefused reports the one failure plain() can fix. The sender
+// has the same rule for notification text; here it also covers the icons.
+func isCustomEmojiRefused(err error) bool {
+	return descriptionContains(err, "custom emoji")
 }
 
 func isNotModified(err error) bool {

@@ -5,34 +5,36 @@ lang:
   name: Русский
 
 nav:
-  back: "◁ Назад"
+  back: "Назад"
 
 format:
   datetime: "02.01 15:04"
 
 btn:
-  connect_github: "🔗 Подключить GitHub"
+  connect_github: "Подключить GitHub"
   repos: "🏢 Репозитории"
-  chats: "💬 Чаты"
-  status: "📊 Статус"
-  settings: "⚙️ Настройки"
+  chats: "Чаты"
+  status: "Статус"
+  settings: "Настройки"
   add_to_chat: "➕ Добавить в чат"
-  home: "🏠 В начало"
+  home: "В начало"
   more_accounts: "➕ Ещё аккаунт"
-  configure_access: "🔗 Настроить доступ"
+  configure_access: "Настроить доступ"
   prev_page: "◁ Раньше"
   next_page: "Вперёд ▷"
-  connect_to_chat: "💬 Подключить к чату"
-  open_github: "🔗 Открыть на GitHub"
-  install_app: "🔗 Установить GitHub App"
-  installed: "🔄 Я установил"
-  events: "🔔 События"
+  connect_to_chat: "Подключить к чату"
+  open_github: "Открыть на GitHub"
+  install_app: "Установить GitHub App"
+  installed: "Я установил"
+  events: "События"
   health: "🩺 Здоровье"
   filters: "🚫 Фильтры"
-  disconnect: "🗑 Отключить"
-  set_topic: "🏷 Указать топик"
-  unmute: "🔔 Снять"
-  configure: "⚙️ Настроить"
+  disconnect: "Отключить"
+  set_topic: "Указать топик"
+  topic_general: "Общий чат"
+  topic_new: "➕ Новый топик"
+  unmute: "Снять"
+  configure: "Настроить"
   add_to_group: "➕ Добавить в группу"
 
 home:
@@ -69,6 +71,8 @@ add_to_chat:
 result:
   ok: "<b>Готово</b>\n\n{name} подключён.\nСобытия уже идут — настроить их можно в разделе «Чаты»."
   not_admin: "<b>Нужны права администратора</b>\n\nПодключать репозитории к чату и менять его настройки может только его администратор."
+  not_owner: "<b>Подключил другой администратор</b>\n\nОтключить репозиторий может только тот, кто его подключил, или владелец чата."
+  topic_failed: "<b>Топик не создан</b>\n\nВ чате должны быть включены темы, а у бота — право «Управление темами»."
   duplicate: "<b>Уже подключено</b>\n\n{name} уже присылает события в этот чат."
   error: "<b>Не получилось</b>\n\nПопробуй ещё раз чуть позже."
 
@@ -76,7 +80,7 @@ chats:
   empty: "Пока нет чатов с подключёнными репозиториями."
   title: "Чаты"
   hint: "Чат с подключёнными репозиториями можно замьютить или направить в топик."
-  entry: "💬 {title} · {n}"
+  entry: "{title} · {n}"
 
 chat_detail:
   muted_until: "🔇 Замьютен до {time}"
@@ -85,21 +89,32 @@ chat_detail:
   mute: "🔇 {h}ч"
   language: "Язык"
 
+# The forum topic picker. Telegram cannot list a chat's topics, so this
+# screen offers the ones the bot has seen plus a topic it creates itself.
+topics:
+  title: "Топик"
+  hint: "Выбери, куда присылать уведомления этого чата. Топик попадает в список после того, как бот его увидел."
+  empty: "Топики пока не замечены. Отправь /start внутри нужного топика и открой этот экран снова — или пусть бот создаст свой."
+  unnamed: "Топик {id}"
+  # Name of the topic the bot creates on request.
+  new_name: "GitHub"
+
 integration_detail:
   hint: "Что настроить для этого репозитория?"
+  not_owner: "Этот репозиторий подключил другой администратор — отключить его может он сам или владелец чата."
 
 events:
   title: "События"
   hint: "Пресеты сверху, отдельные типы ниже."
-  preset_all: "✅ Всё"
+  preset_all: "Всё"
   preset_important: "⭐ Только важное"
-  preset_none: "❌ Ничего"
+  preset_none: "Ничего"
 
 filters:
   title: "Фильтры"
   empty: "Пока ничего не игнорируется."
   hint: "Совпавшие события не присылаются:"
-  entry: "✖ {kind}: {value}"
+  entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
     author: "👤 Автор"
@@ -132,14 +147,12 @@ placeholder:
   body: "Этот раздел ещё в работе."
 
 prompt:
-  topic: "Пришли id топика форума (число). 0 — присылать в общий чат."
   filter: "Пришли шаблон для фильтра («{kind}»). Можно использовать *."
-  topic_invalid: "⚠️ Это не число — топик не изменён."
   filter_invalid: "⚠️ Шаблон пустой или слишком длинный."
 
 greeting:
   body: "Настройка — в личных сообщениях."
-  button: "⚙️ Настроить"
+  button: "Настроить"
 
 delivery:
   failed_title: "Доставка не удалась"

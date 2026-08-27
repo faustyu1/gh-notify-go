@@ -9,6 +9,7 @@ import (
 	"github.com/mymmrac/telego/telegoapi"
 	"github.com/stretchr/testify/require"
 
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
@@ -17,10 +18,12 @@ import (
 // fakeAnchorAPI records sends and edits separately so the test can tell which
 // path the anchor took.
 type fakeAnchorAPI struct {
-	sent    []*telego.SendMessageParams
-	edited  []*telego.EditMessageTextParams
-	deleted []*telego.DeleteMessageParams
-	editErr error
+	sent        []*telego.SendMessageParams
+	edited      []*telego.EditMessageTextParams
+	deleted     []*telego.DeleteMessageParams
+	editErr     error
+	sendErr     error
+	sendErrOnce bool
 }
 
 func (f *fakeAnchorAPI) DeleteMessage(_ context.Context, p *telego.DeleteMessageParams) error {
@@ -32,6 +35,13 @@ func (f *fakeAnchorAPI) SendMessage(
 	_ context.Context, p *telego.SendMessageParams,
 ) (*telego.Message, error) {
 	f.sent = append(f.sent, p)
+	if f.sendErr != nil {
+		err := f.sendErr
+		if f.sendErrOnce {
+			f.sendErr = nil
+		}
+		return nil, err
+	}
 	return &telego.Message{MessageID: 100 + len(f.sent)}, nil
 }
 
@@ -218,4 +228,48 @@ func TestKeyboardUsesOpaqueCallbackKeys(t *testing.T) {
 	linkButton := markup.InlineKeyboard[1][0]
 	require.Equal(t, "https://github.com", linkButton.URL)
 	require.Empty(t, linkButton.CallbackData)
+}
+
+// A button caption carries no entities, so a premium emoji reaches Telegram as
+// the button's own icon field.
+func TestKeyboardCarriesPremiumIcons(t *testing.T) {
+	nav := newMemNav()
+	engine := ui.NewEngine(nav, i18n.MustNewBundle())
+
+	markup, err := tg.Keyboard(context.Background(), engine, 1, ui.View{
+		Rows: [][]ui.Button{{
+			{Label: "Home", Icon: render.EmojiHouse, Screen: "home"},
+			{Label: "GitHub", Icon: render.EmojiLink, URL: "https://github.com"},
+			{Label: "Plain", Screen: "home"},
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, render.EmojiHouse, markup.InlineKeyboard[0][0].IconCustomEmojiID)
+	require.Equal(t, render.EmojiLink, markup.InlineKeyboard[0][1].IconCustomEmojiID)
+	require.Empty(t, markup.InlineKeyboard[0][2].IconCustomEmojiID)
+}
+
+// Custom emoji are a privilege the bot may lose: the interface must then go
+// out plain rather than not go out at all.
+func TestSendRetriesWithoutCustomEmojiWhenRefused(t *testing.T) {
+	api := &fakeAnchorAPI{sendErr: &telegoapi.Error{
+		ErrorCode: 400, Description: "Bad Request: custom emoji is not allowed",
+	}, sendErrOnce: true}
+	nav := newMemNav()
+	engine := ui.NewEngine(nav, i18n.MustNewBundle())
+	anchor := tg.NewAnchor(api, engine, nav)
+
+	markupView := ui.View{
+		Text: render.Emoji(render.EmojiBot, "🤖") + " hi",
+		Rows: [][]ui.Button{{{Label: "Home", Icon: render.EmojiHouse, Screen: "home"}}},
+	}
+	require.NoError(t, anchor.Show(context.Background(), 1, 555, markupView))
+
+	require.Len(t, api.sent, 2)
+	retry := api.sent[1]
+	require.Equal(t, "🤖 hi", retry.Text)
+	keyboard, ok := retry.ReplyMarkup.(*telego.InlineKeyboardMarkup)
+	require.True(t, ok)
+	require.Empty(t, keyboard.InlineKeyboard[0][0].IconCustomEmojiID)
+	require.Equal(t, "Home", keyboard.InlineKeyboard[0][0].Text)
 }

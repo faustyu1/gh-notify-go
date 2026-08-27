@@ -49,4 +49,5 @@ const (
 	EmojiFormat     = "5778479949572738874"
 	EmojiCode       = "5940433880585605708"
 	EmojiLoading    = "5345906554510012647"
+	EmojiBack       = "5877629862306385808"
 )

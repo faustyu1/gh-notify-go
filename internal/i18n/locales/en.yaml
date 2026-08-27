@@ -6,7 +6,7 @@ lang:
   name: English
 
 nav:
-  back: "◁ Back"
+  back: "Back"
 
 format:
   # Go time layout for short timestamps in messages.
@@ -15,28 +15,30 @@ format:
 # Buttons reused across screens. Plain emoji travel with the label because
 # Telegram button captions cannot carry entities.
 btn:
-  connect_github: "🔗 Connect GitHub"
+  connect_github: "Connect GitHub"
   repos: "🏢 Repositories"
-  chats: "💬 Chats"
-  status: "📊 Status"
-  settings: "⚙️ Settings"
+  chats: "Chats"
+  status: "Status"
+  settings: "Settings"
   add_to_chat: "➕ Add to chat"
-  home: "🏠 Home"
+  home: "Home"
   more_accounts: "➕ Another account"
-  configure_access: "🔗 Configure access"
+  configure_access: "Configure access"
   prev_page: "◁ Newer"
   next_page: "Older ▷"
-  connect_to_chat: "💬 Connect to chat"
-  open_github: "🔗 Open on GitHub"
-  install_app: "🔗 Install GitHub App"
-  installed: "🔄 I've installed it"
-  events: "🔔 Events"
+  connect_to_chat: "Connect to chat"
+  open_github: "Open on GitHub"
+  install_app: "Install GitHub App"
+  installed: "I've installed it"
+  events: "Events"
   health: "🩺 Health"
   filters: "🚫 Filters"
-  disconnect: "🗑 Disconnect"
-  set_topic: "🏷 Set topic"
-  unmute: "🔔 Unmute"
-  configure: "⚙️ Configure"
+  disconnect: "Disconnect"
+  set_topic: "Set topic"
+  topic_general: "General chat"
+  topic_new: "➕ New topic"
+  unmute: "Unmute"
+  configure: "Configure"
   add_to_group: "➕ Add to group"
 
 home:
@@ -73,6 +75,8 @@ add_to_chat:
 result:
   ok: "<b>Done</b>\n\n{name} is connected.\nEvents are already flowing — you can tune them in the “Chats” section."
   not_admin: "<b>Administrator rights required</b>\n\nOnly a chat administrator can connect repositories to it and change its settings."
+  not_owner: "<b>Connected by another administrator</b>\n\nOnly the admin who connected this repository — or the chat's owner — can disconnect it."
+  topic_failed: "<b>Topic not created</b>\n\nThe chat needs topics enabled and the bot needs the “Manage topics” right."
   duplicate: "<b>Already connected</b>\n\n{name} already sends events to this chat."
   error: "<b>Didn't work</b>\n\nTry again a little later."
 
@@ -80,7 +84,7 @@ chats:
   empty: "No chats with connected repositories yet."
   title: "Chats"
   hint: "A chat with connected repositories can be muted or pointed at a topic."
-  entry: "💬 {title} · {n}"
+  entry: "{title} · {n}"
 
 chat_detail:
   muted_until: "🔇 Muted until {time}"
@@ -89,21 +93,32 @@ chat_detail:
   mute: "🔇 {h}h"
   language: "Language"
 
+# The forum topic picker. Telegram cannot list a chat's topics, so this
+# screen offers the ones the bot has seen plus a topic it creates itself.
+topics:
+  title: "Topic"
+  hint: "Pick where this chat's notifications land. A topic is only listed once the bot has seen it."
+  empty: "No topics seen here yet. Send /start inside the topic you want, then open this screen again — or let the bot create one."
+  unnamed: "Topic {id}"
+  # Name of the topic the bot creates on request.
+  new_name: "GitHub"
+
 integration_detail:
   hint: "What would you like to set up for this repository?"
+  not_owner: "Another administrator connected this repository, so disconnecting it is up to them or the chat owner."
 
 events:
   title: "Events"
   hint: "Presets on top, individual types below."
-  preset_all: "✅ Everything"
+  preset_all: "Everything"
   preset_important: "⭐ Important only"
-  preset_none: "❌ Nothing"
+  preset_none: "Nothing"
 
 filters:
   title: "Filters"
   empty: "Nothing is ignored yet."
   hint: "Matching events are not sent:"
-  entry: "✖ {kind}: {value}"
+  entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
     author: "👤 Author"
@@ -137,15 +152,13 @@ placeholder:
 
 # The DM side of the bot: ForceReply prompts and one-off notices.
 prompt:
-  topic: "Send the forum topic id (a number). 0 delivers to the general chat."
   filter: "Send a pattern for the filter ({kind}). You may use *."
-  topic_invalid: "⚠️ That is not a number — the topic was not changed."
   filter_invalid: "⚠️ The pattern is empty or too long."
 
 greeting:
   # Sent once when the bot lands in a group.
   body: "Setup happens in a private chat."
-  button: "⚙️ Configure"
+  button: "Configure"
 
 delivery:
   # DM to the integration owner when a job fails permanently.

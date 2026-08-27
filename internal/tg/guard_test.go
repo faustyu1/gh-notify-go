@@ -16,6 +16,7 @@ import (
 // the chat the data actually belongs to.
 type fakeAdmin struct {
 	admins map[int64]struct{} // telegram chat ids where the caller is admin
+	owners map[int64]int64    // telegram chat id -> its owner's user id
 	asked  []int64
 }
 
@@ -25,13 +26,24 @@ func (f *fakeAdmin) IsAdmin(_ context.Context, telegramChatID, _ int64) (bool, e
 	return ok, nil
 }
 
+func (f *fakeAdmin) IsOwner(_ context.Context, telegramChatID, telegramUserID int64) (bool, error) {
+	return f.owners[telegramChatID] == telegramUserID && telegramUserID != 0, nil
+}
+
 // fakeLookup stands in for the database: integration 7 and filter 3 live in
-// chat -100.
+// chat -100, and user 555 connected integration 7.
 type fakeLookup struct{}
 
 func (fakeLookup) TelegramChatForIntegration(_ context.Context, id int64) (int64, error) {
 	if id == 7 {
 		return -100, nil
+	}
+	return 0, errors.New("integration not found")
+}
+
+func (fakeLookup) CreatorTelegramForIntegration(_ context.Context, id int64) (int64, error) {
+	if id == 7 {
+		return 555, nil
 	}
 	return 0, errors.New("integration not found")
 }
@@ -44,7 +56,7 @@ func (fakeLookup) TelegramChatForFilter(_ context.Context, id int64) (int64, err
 }
 
 func newGuard(adminOf ...int64) (*tg.Guard, *fakeAdmin) {
-	admin := &fakeAdmin{admins: map[int64]struct{}{}}
+	admin := &fakeAdmin{admins: map[int64]struct{}{}, owners: map[int64]int64{}}
 	for _, id := range adminOf {
 		admin.admins[id] = struct{}{}
 	}
@@ -85,7 +97,9 @@ func TestGuardRefusesEveryChatChangingAction(t *testing.T) {
 		params ui.Params
 	}{
 		{"a_mute", ui.Params{"chat": "-100", "hours": "24"}},
-		{"a_topic", ui.Params{"chat": "-100"}},
+		{"a_topic", ui.Params{"chat": "-100", "topic": "5"}},
+		{"a_topic_new", ui.Params{"chat": "-100"}},
+		{"topics", ui.Params{"chat": "-100"}},
 		{"a_ev_toggle", ui.Params{"integration": "7", "kind": "push", "to": "0"}},
 		{"a_ev_preset", ui.Params{"integration": "7", "preset": "none"}},
 		{"a_filter_add", ui.Params{"integration": "7", "kind": "author"}},
@@ -126,5 +140,41 @@ func TestGuardRefusesMissingChatParam(t *testing.T) {
 	guard, _ := newGuard(-100)
 
 	err := guard.Authorize(context.Background(), 555, "chat_detail", nil)
+	require.ErrorIs(t, err, service.ErrNotAdmin)
+}
+
+// Admin rights let anyone manage a chat; they do not let anyone unplug a
+// repository another admin connected.
+func TestGuardRefusesDisconnectByAnotherAdmin(t *testing.T) {
+	guard, _ := newGuard(-100) // integration 7 was connected by user 555
+
+	err := guard.Authorize(context.Background(), 999, "a_int_del",
+		ui.Params{"integration": "7", "chat": "-100"})
+	require.ErrorIs(t, err, service.ErrNotOwner)
+}
+
+func TestGuardAllowsDisconnectByTheAdminWhoConnectedIt(t *testing.T) {
+	guard, _ := newGuard(-100)
+
+	require.NoError(t, guard.Authorize(context.Background(), 555, "a_int_del",
+		ui.Params{"integration": "7", "chat": "-100"}))
+}
+
+// The chat's owner is the way out of an integration whose author is gone.
+func TestGuardAllowsDisconnectByChatOwner(t *testing.T) {
+	guard, admin := newGuard(-100)
+	admin.owners[-100] = 999
+
+	require.NoError(t, guard.Authorize(context.Background(), 999, "a_int_del",
+		ui.Params{"integration": "7", "chat": "-100"}))
+}
+
+// Ownership is only ever consulted after admin rights: a stranger is refused
+// as a non-admin, not told whose integration it is.
+func TestGuardRefusesDisconnectForNonAdminBeforeOwnership(t *testing.T) {
+	guard, _ := newGuard()
+
+	err := guard.Authorize(context.Background(), 555, "a_int_del",
+		ui.Params{"integration": "7", "chat": "-100"})
 	require.ErrorIs(t, err, service.ErrNotAdmin)
 }

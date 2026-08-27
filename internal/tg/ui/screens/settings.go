@@ -48,7 +48,7 @@ func (s settingsScreen) Render(_ context.Context, sess ui.Session) (ui.View, err
 		Text: text,
 		Rows: [][]ui.Button{
 			langRow,
-			{{Label: l.T("btn.home"), Screen: "home"}},
+			{{Label: l.T("btn.home"), Icon: render.EmojiHouse, Screen: "home"}},
 		},
 	}, nil
 }

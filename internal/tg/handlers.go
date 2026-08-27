@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	th "github.com/mymmrac/telego/telegohandler"
 
 	"github.com/faustyu/gh-notify-go/internal/events"
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/service"
 	"github.com/faustyu/gh-notify-go/internal/storage"
@@ -35,6 +37,16 @@ func RegisterHandlers(bh *th.BotHandler, deps HandlerDeps) {
 	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
 		return handleStart(ctx, deps, message)
 	}, th.CommandEqual("start"))
+
+	// Groups are watched for one thing only: which forum topics exist. The
+	// handler runs before the reply handler because a group message is never
+	// an answer to a ForceReply prompt, which only ever happens in DM.
+	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
+		return recordTopic(ctx, deps, message)
+	}, func(_ context.Context, update telego.Update) bool {
+		return update.Message != nil &&
+			update.Message.Chat.Type != telego.ChatTypePrivate
+	})
 
 	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
 		return handleReplyInput(ctx, deps, message)
@@ -64,6 +76,16 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 		})
 	}
 
+	// /start inside a forum topic is also how an admin reveals that topic to
+	// the picker: Telegram delivers commands to the bot whatever its privacy
+	// setting, so this works in a group where ordinary messages do not reach
+	// it at all.
+	if message.Chat.Type != telego.ChatTypePrivate {
+		if err := recordTopic(ctx, deps, message); err != nil {
+			return err
+		}
+	}
+
 	userID, lang, err := deps.Store.UpsertUser(ctx, message.From.ID,
 		i18n.Normalize(message.From.LanguageCode))
 	if err != nil {
@@ -86,11 +108,12 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 	if err != nil {
 		// chat_<id> is user-typed text: any chat id at all can arrive here,
 		// including one the sender has nothing to do with.
-		if !errors.Is(err, service.ErrNotAdmin) {
+		status, refused := refusalStatus(err)
+		if !refused {
 			return err
 		}
 		view, err = deps.Engine.Open(ctx, userID, message.From.ID, "result",
-			ui.Params{"status": "not_admin"}, lang)
+			ui.Params{"status": status}, lang)
 		if err != nil {
 			return err
 		}
@@ -100,17 +123,30 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 	return deps.Anchor.Reset(ctx, userID, message.From.ID, view)
 }
 
-// denyNotAdmin lands a refused user on the shared result screen rather than
-// leaving the tap silently unanswered.
-func denyNotAdmin(
-	ctx *th.Context, deps HandlerDeps, userID, telegramID int64, lang string,
+// deny lands a refused user on the shared result screen rather than leaving
+// the tap silently unanswered.
+func deny(
+	ctx *th.Context, deps HandlerDeps, userID, telegramID int64, lang, status string,
 ) error {
 	view, err := deps.Engine.Open(ctx, userID, telegramID, "result",
-		ui.Params{"status": "not_admin"}, lang)
+		ui.Params{"status": status}, lang)
 	if err != nil {
 		return err
 	}
 	return deps.Anchor.Show(ctx, userID, telegramID, view)
+}
+
+// refusalStatus names the result screen that explains a refusal: being told
+// "you are not an administrator" when the real answer is "this repository
+// belongs to another admin" would send people looking for the wrong problem.
+func refusalStatus(err error) (string, bool) {
+	switch {
+	case errors.Is(err, service.ErrNotAdmin):
+		return "not_admin", true
+	case errors.Is(err, service.ErrNotOwner):
+		return "not_owner", true
+	}
+	return "", false
 }
 
 func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuery) error {
@@ -145,8 +181,8 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 	// authorized again inside the engine, which costs nothing beyond a cache
 	// hit and covers the paths that skip this handler.
 	if err := deps.Guard.Authorize(ctx, query.From.ID, screen, params); err != nil {
-		if errors.Is(err, service.ErrNotAdmin) {
-			return denyNotAdmin(ctx, deps, userID, query.From.ID, lang)
+		if status, refused := refusalStatus(err); refused {
+			return deny(ctx, deps, userID, query.From.ID, lang, status)
 		}
 		return err
 	}
@@ -154,8 +190,8 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 	if ui.IsBack(screen) {
 		view, err := deps.Engine.Back(ctx, userID, query.From.ID, lang)
 		if err != nil {
-			if errors.Is(err, service.ErrNotAdmin) {
-				return denyNotAdmin(ctx, deps, userID, query.From.ID, lang)
+			if status, refused := refusalStatus(err); refused {
+				return deny(ctx, deps, userID, query.From.ID, lang, status)
 			}
 			return err
 		}
@@ -170,8 +206,9 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 	case "a_mute":
 		return applyMute(ctx, deps, userID, query.From.ID, lang, params)
 	case "a_topic":
-		return startInput(ctx, deps, userID, query.From.ID, lang, "topic", params,
-			deps.Loc.Localizer(lang).T("prompt.topic"))
+		return applyTopic(ctx, deps, userID, query.From.ID, lang, params)
+	case "a_topic_new":
+		return createTopic(ctx, deps, userID, query.From.ID, lang, params)
 	case "a_ev_toggle":
 		return toggleEvent(ctx, deps, userID, query.From.ID, lang, params)
 	case "a_ev_preset":
@@ -205,8 +242,8 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 
 	view, err := deps.Engine.Open(ctx, userID, query.From.ID, screen, params, lang)
 	if err != nil {
-		if errors.Is(err, service.ErrNotAdmin) {
-			return denyNotAdmin(ctx, deps, userID, query.From.ID, lang)
+		if status, refused := refusalStatus(err); refused {
+			return deny(ctx, deps, userID, query.From.ID, lang, status)
 		}
 		return err
 	}
@@ -355,11 +392,12 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 	// The prompt was authorized when it was sent, but it can sit unanswered
 	// for as long as the user likes, so the write is authorized again here.
 	if err := deps.Guard.Authorize(ctx, message.From.ID, pendingScope(action), params); err != nil {
-		if !errors.Is(err, service.ErrNotAdmin) {
+		status, refused := refusalStatus(err)
+		if !refused {
 			return err
 		}
 		dropPrompt(ctx, message)
-		return denyNotAdmin(ctx, deps, userID, message.From.ID, lang)
+		return deny(ctx, deps, userID, message.From.ID, lang, status)
 	}
 
 	var (
@@ -368,22 +406,6 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		notice string
 	)
 	switch action {
-	case "topic":
-		screen = "chat_detail"
-		topicID, err := strconv.ParseInt(reply, 10, 64)
-		if err != nil || topicID < 0 {
-			notice = l.T("prompt.topic_invalid")
-			break
-		}
-		var topic *int64
-		if topicID > 0 {
-			topic = &topicID
-		}
-		if err := deps.Store.SetChatTopic(ctx, paramInt(params["chat"]), topic); err != nil {
-			return err
-		}
-		audit(ctx, deps, userID, paramInt(params["chat"]), "chat.topic",
-			map[string]any{"topic": topicID})
 	case "filter":
 		screen = "filters"
 		if reply == "" || len(reply) > 100 {
@@ -411,10 +433,7 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 // pendingScope names the action a ForceReply answer completes, so the same
 // authorization table covers the prompt and the write it produces.
 func pendingScope(action string) string {
-	switch action {
-	case "topic":
-		return "a_topic"
-	case "filter":
+	if action == "filter" {
 		return "a_filter_add"
 	}
 	return action
@@ -520,7 +539,8 @@ func handleAddedToChat(ctx *th.Context, deps HandlerDeps, update telego.ChatMemb
 		ParseMode: telego.ModeHTML,
 		ReplyMarkup: &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{{{
-				Text: l.T("greeting.button"),
+				Text:              l.T("greeting.button"),
+				IconCustomEmojiID: render.EmojiSettings,
 				URL: "https://t.me/" + deps.BotUser + "?start=chat_" +
 					fmt.Sprint(update.Chat.ID),
 			}}},

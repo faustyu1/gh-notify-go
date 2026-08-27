@@ -48,18 +48,35 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		b.line(l.T("chat_detail.active"))
 	}
 	if chat.TopicID != nil {
-		b.line(l.T("chat_detail.topic", "id", strconv.FormatInt(*chat.TopicID, 10)))
+		// The id is what the database stores, but the name is what the admin
+		// recognises; the id stays as the fallback for a topic nobody has
+		// named for the bot yet.
+		label := strconv.FormatInt(*chat.TopicID, 10)
+		known, err := d.store.TopicsForChat(ctx, chat.ID)
+		if err != nil {
+			return ui.View{}, err
+		}
+		for _, topic := range known {
+			if topic.TopicID == *chat.TopicID && topic.Title != "" {
+				label = topic.Title
+				break
+			}
+		}
+		b.line(l.T("chat_detail.topic", "id", render.Escape(label)))
 	}
 	b.line("")
 
 	rows := make([][]ui.Button, 0, len(integrations)+5)
 	for _, it := range integrations {
-		icon := "📂"
+		// A broken integration keeps a plain warning sign: nothing in the
+		// premium set says "this stopped working".
+		label, icon := it.RepoFullName, render.EmojiFile
 		if it.BrokenReason != nil {
-			icon = "⚠️"
+			label, icon = "⚠️ "+it.RepoFullName, ""
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  icon + " " + it.RepoFullName,
+			Label:  label,
+			Icon:   icon,
 			Screen: "integration_detail",
 			Params: ui.Params{
 				"integration": strconv.FormatInt(it.ID, 10),
@@ -75,14 +92,20 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		{Label: l.T("chat_detail.mute", "h", "1"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "1"}},
 		{Label: l.T("chat_detail.mute", "h", "8"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "8"}},
 		{Label: l.T("chat_detail.mute", "h", "24"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "24"}},
-		{Label: l.T("btn.unmute"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "0"}},
+		{Label: l.T("btn.unmute"), Icon: render.EmojiBell, Screen: "a_mute",
+			Params: ui.Params{"chat": s.Params["chat"], "hours": "0"}},
 	}
 	rows = append(rows, mute)
-	rows = append(rows, []ui.Button{{
-		Label:  l.T("btn.set_topic"),
-		Screen: "a_topic",
-		Params: ui.Params{"chat": s.Params["chat"]},
-	}})
+	// Only a supergroup can have topics at all, so a plain group is spared a
+	// button that could never lead anywhere.
+	if chat.Kind == "supergroup" {
+		rows = append(rows, []ui.Button{{
+			Label:  l.T("btn.set_topic"),
+			Icon:   render.EmojiTag,
+			Screen: "topics",
+			Params: ui.Params{"chat": s.Params["chat"]},
+		}})
+	}
 
 	if len(integrations) == 0 {
 		rows = append(rows, []ui.Button{{Label: l.T("btn.repos"), Screen: "accounts"}})

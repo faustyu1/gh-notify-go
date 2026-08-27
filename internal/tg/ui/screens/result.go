@@ -30,6 +30,12 @@ func (r result) Render(_ context.Context, s ui.Session) (ui.View, error) {
 	case "not_admin":
 		emoji = render.Emoji(render.EmojiCross, "❌")
 		text = l.T("result.not_admin")
+	case "not_owner":
+		emoji = render.Emoji(render.EmojiCross, "❌")
+		text = l.T("result.not_owner")
+	case "topic_failed":
+		emoji = render.Emoji(render.EmojiCross, "❌")
+		text = l.T("result.topic_failed")
 	case "duplicate":
 		emoji = render.Emoji(render.EmojiInfo, "ℹ")
 		text = l.T("result.duplicate", "name", render.Escape(s.Params["name"]))
@@ -40,6 +46,7 @@ func (r result) Render(_ context.Context, s ui.Session) (ui.View, error) {
 
 	return ui.View{
 		Text: emoji + " " + text,
-		Rows: [][]ui.Button{{{Label: l.T("btn.home"), Screen: "home"}}},
+		Rows: [][]ui.Button{{{Label: l.T("btn.home"),
+			Icon: render.EmojiHouse, Screen: "home"}}},
 	}, nil
 }
