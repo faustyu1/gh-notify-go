@@ -14,12 +14,24 @@ import (
 var (
 	ErrNotAdmin         = errors.New("user is not an administrator of this chat")
 	ErrAlreadyConnected = errors.New("repository is already connected to this chat")
+	// ErrNotOwner separates "you may not manage this chat at all" from "this
+	// integration belongs to another admin": being an administrator is not
+	// enough to remove somebody else's repository.
+	ErrNotOwner = errors.New("integration belongs to another administrator")
 )
 
 // AdminChecker answers whether a user may change a chat's integrations. It is
 // an interface so the check can be faked in tests and cached in production.
 type AdminChecker interface {
 	IsAdmin(ctx context.Context, telegramChatID, telegramUserID int64) (bool, error)
+}
+
+// ChatRoles adds the one distinction the admin list already carries but
+// IsAdmin flattens away: which administrator created the chat. The chat's
+// owner is the escape hatch for an integration whose author left.
+type ChatRoles interface {
+	AdminChecker
+	IsOwner(ctx context.Context, telegramChatID, telegramUserID int64) (bool, error)
 }
 
 type ConnectRequest struct {

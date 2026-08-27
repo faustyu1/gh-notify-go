@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
@@ -27,9 +28,12 @@ type Session struct {
 }
 
 // Button is either a navigation target (Screen set) or an external link
-// (URL set).
+// (URL set). Icon is a premium emoji id Telegram draws before the label:
+// a button caption carries no message entities, so the icon travels as its
+// own field rather than as a character in the label.
 type Button struct {
 	Label  string
+	Icon   string
 	Screen string
 	Params Params
 	URL    string
@@ -116,8 +120,6 @@ func (e *Engine) Back(
 	return e.render(ctx, userID, telegramID, screen, params, lang)
 }
 
-// BackButtonLabel is plain Unicode: Telegram button labels cannot carry
-// message entities, so premium emoji are impossible here by design.
 func (e *Engine) BackButtonLabel(lang string) string {
 	return e.loc.Localizer(lang).T("nav.back")
 }
@@ -147,7 +149,8 @@ func (e *Engine) render(
 	// which is what guarantees it is present everywhere below the root.
 	if depth > 1 {
 		view.Rows = append(view.Rows, []Button{{
-			Label: e.BackButtonLabel(lang), Screen: backScreen,
+			Label: e.BackButtonLabel(lang), Icon: render.EmojiBack,
+			Screen: backScreen,
 		}})
 	}
 	return view, nil

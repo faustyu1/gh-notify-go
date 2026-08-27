@@ -20,6 +20,9 @@ const (
 	scopeIntegration
 	// scopeFilter: params["filter"], chat resolved in the database.
 	scopeFilter
+	// scopeIntegrationOwner: like scopeIntegration, plus the integration must
+	// belong to the caller — or the caller must own the chat.
+	scopeIntegrationOwner
 )
 
 // chatScopes covers every screen that shows a chat's setup and every action
@@ -27,8 +30,10 @@ const (
 // chat id, not a telegram one, and Integrator.Connect authorizes it itself.
 var chatScopes = map[string]scope{
 	"chat_detail":        scopeChat,
+	"topics":             scopeChat,
 	"a_mute":             scopeChat,
 	"a_topic":            scopeChat,
+	"a_topic_new":        scopeChat,
 	"integration_detail": scopeIntegration,
 	"events":             scopeIntegration,
 	"filters":            scopeIntegration,
@@ -36,7 +41,7 @@ var chatScopes = map[string]scope{
 	"a_ev_toggle":        scopeIntegration,
 	"a_ev_preset":        scopeIntegration,
 	"a_filter_add":       scopeIntegration,
-	"a_int_del":          scopeIntegration,
+	"a_int_del":          scopeIntegrationOwner,
 	"a_filter_del":       scopeFilter,
 }
 
@@ -44,6 +49,7 @@ var chatScopes = map[string]scope{
 type ChatLookup interface {
 	TelegramChatForIntegration(ctx context.Context, integrationID int64) (int64, error)
 	TelegramChatForFilter(ctx context.Context, filterID int64) (int64, error)
+	CreatorTelegramForIntegration(ctx context.Context, integrationID int64) (int64, error)
 }
 
 // Guard answers "may this user see or change this chat's setup". Every path
@@ -51,12 +57,12 @@ type ChatLookup interface {
 // and the /start chat_<id> deep link, which a user can type by hand for any
 // chat id at all.
 type Guard struct {
-	admin service.AdminChecker
+	roles service.ChatRoles
 	store ChatLookup
 }
 
-func NewGuard(admin service.AdminChecker, store ChatLookup) *Guard {
-	return &Guard{admin: admin, store: store}
+func NewGuard(roles service.ChatRoles, store ChatLookup) *Guard {
+	return &Guard{roles: roles, store: store}
 }
 
 // Authorize returns nil when the screen or action is allowed, and
@@ -78,7 +84,7 @@ func (g *Guard) Authorize(
 	switch sc {
 	case scopeChat:
 		telegramChatID = paramInt(params["chat"])
-	case scopeIntegration:
+	case scopeIntegration, scopeIntegrationOwner:
 		telegramChatID, err = g.store.TelegramChatForIntegration(ctx,
 			paramInt(params["integration"]))
 	case scopeFilter:
@@ -92,12 +98,40 @@ func (g *Guard) Authorize(
 		return service.ErrNotAdmin
 	}
 
-	admin, err := g.admin.IsAdmin(ctx, telegramChatID, telegramUserID)
+	admin, err := g.roles.IsAdmin(ctx, telegramChatID, telegramUserID)
 	if err != nil {
 		return fmt.Errorf("authorize %s: %w", screen, err)
 	}
 	if !admin {
 		return service.ErrNotAdmin
+	}
+	if sc == scopeIntegrationOwner {
+		return g.authorizeOwnership(ctx, screen, telegramChatID, telegramUserID,
+			paramInt(params["integration"]))
+	}
+	return nil
+}
+
+// authorizeOwnership answers the question admin rights cannot: an integration
+// is removable by the admin who connected it, and by the chat's owner, and by
+// nobody else. Without this any co-administrator could quietly unplug another
+// admin's repository.
+func (g *Guard) authorizeOwnership(
+	ctx context.Context, screen string, telegramChatID, telegramUserID, integrationID int64,
+) error {
+	creator, err := g.store.CreatorTelegramForIntegration(ctx, integrationID)
+	if err != nil {
+		return fmt.Errorf("authorize %s: %w", screen, err)
+	}
+	if creator == telegramUserID {
+		return nil
+	}
+	owner, err := g.roles.IsOwner(ctx, telegramChatID, telegramUserID)
+	if err != nil {
+		return fmt.Errorf("authorize %s: %w", screen, err)
+	}
+	if !owner {
+		return service.ErrNotOwner
 	}
 	return nil
 }

@@ -39,6 +39,7 @@ func (c chatsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) 
 		rows = append(rows, []ui.Button{{
 			Label: l.T("chats.entry",
 				"title", chat.Title, "n", chat.IntegrationCount),
+			Icon:   render.EmojiPeople,
 			Screen: "chat_detail",
 			Params: ui.Params{"chat": strconv.FormatInt(chat.TelegramChatID, 10)},
 		}})

@@ -20,7 +20,15 @@ type Store interface {
 	IntegrationsInChat(ctx context.Context, chatID int64) ([]domain.Integration, error)
 	EventSettings(ctx context.Context, integrationID int64) (map[string]bool, error)
 	FiltersForIntegration(ctx context.Context, integrationID int64) ([]storage.Filter, error)
+	TopicsForChat(ctx context.Context, chatID int64) ([]storage.ChatTopic, error)
+	CreatorTelegramForIntegration(ctx context.Context, integrationID int64) (int64, error)
 	StatusStats(ctx context.Context, userID int64) (sent, failed int, err error)
+}
+
+// Roles is the screen-side half of the ownership rule: a button that would
+// be refused on tap is better not drawn at all.
+type Roles interface {
+	IsOwner(ctx context.Context, telegramChatID, telegramUserID int64) (bool, error)
 }
 
 type Repos interface {

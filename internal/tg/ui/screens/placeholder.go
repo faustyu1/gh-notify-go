@@ -28,6 +28,7 @@ func (p placeholder) Render(_ context.Context, s ui.Session) (ui.View, error) {
 	return ui.View{
 		Text: render.Emoji(render.EmojiClock, "⏰") + " <b>" +
 			render.Escape(p.title) + "</b>\n\n" + l.T("placeholder.body"),
-		Rows: [][]ui.Button{{{Label: l.T("btn.home"), Screen: "home"}}},
+		Rows: [][]ui.Button{{{Label: l.T("btn.home"),
+			Icon: render.EmojiHouse, Screen: "home"}}},
 	}, nil
 }

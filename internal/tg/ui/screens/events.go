@@ -15,10 +15,12 @@ import (
 var eventPresets = []struct {
 	key    string
 	preset string
+	icon   string
 }{
-	{"events.preset_all", "all"},
-	{"events.preset_important", "important"},
-	{"events.preset_none", "none"},
+	{"events.preset_all", "all", render.EmojiCheck},
+	// "important" keeps its Unicode star: the premium set has no equivalent.
+	{"events.preset_important", "important", ""},
+	{"events.preset_none", "none", render.EmojiCross},
 }
 
 type eventsScreen struct {
@@ -47,6 +49,7 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 	for _, p := range eventPresets {
 		presetRow = append(presetRow, ui.Button{
 			Label:  l.T(p.key),
+			Icon:   p.icon,
 			Screen: "a_ev_preset",
 			Params: ui.Params{"integration": integration, "preset": p.preset},
 		})
@@ -58,12 +61,13 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 		enabled, explicit := settings[string(kind)]
 		on := !explicit || enabled
 
-		mark := "✅"
+		mark := render.EmojiCheck
 		if !on {
-			mark = "❌"
+			mark = render.EmojiCross
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  mark + " " + string(kind),
+			Label:  string(kind),
+			Icon:   mark,
 			Screen: "a_ev_toggle",
 			Params: ui.Params{
 				"integration": integration,

@@ -51,6 +51,7 @@ func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error
 			rows = append(rows, []ui.Button{{
 				Label: l.T("filters.entry",
 					"kind", kindLabel(l, flt.Kind), "value", flt.Value),
+				Icon:   render.EmojiCross,
 				Screen: "a_filter_del",
 				Params: ui.Params{
 					"filter":      fmt.Sprint(flt.ID),

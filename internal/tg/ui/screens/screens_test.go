@@ -27,6 +27,8 @@ type fakeStore struct {
 	chatIntegrations       []domain.Integration
 	eventSettings          map[string]bool
 	filters                []storage.Filter
+	topics                 []storage.ChatTopic
+	creator                int64
 	sent, failed           int
 }
 
@@ -66,6 +68,21 @@ func (f *fakeStore) StatusStats(context.Context, int64) (int, int, error) {
 	return f.sent, f.failed, nil
 }
 
+func (f *fakeStore) TopicsForChat(context.Context, int64) ([]storage.ChatTopic, error) {
+	return f.topics, nil
+}
+
+func (f *fakeStore) CreatorTelegramForIntegration(context.Context, int64) (int64, error) {
+	return f.creator, nil
+}
+
+// fakeRoles answers the one question the screens ask about chat ownership.
+type fakeRoles struct{ owner int64 }
+
+func (f fakeRoles) IsOwner(_ context.Context, _, telegramUserID int64) (bool, error) {
+	return f.owner != 0 && f.owner == telegramUserID, nil
+}
+
 // fakeStates records who the install token was minted for.
 type fakeStates struct {
 	token     string
@@ -103,7 +120,7 @@ func TestHomeWithNoInstallationOffersInstall(t *testing.T) {
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "tg-emoji")
-	require.Contains(t, labels(view), "🔗 Connect GitHub")
+	require.Contains(t, labels(view), "Connect GitHub")
 	require.NotContains(t, labels(view), "🏢 Repositories")
 }
 
@@ -130,7 +147,7 @@ func TestHomeWithInstallationShowsCounts(t *testing.T) {
 	require.Contains(t, view.Text, "5")
 	require.Contains(t, view.Text, "3")
 	require.Contains(t, labels(view), "🏢 Repositories")
-	require.Contains(t, labels(view), "💬 Chats")
+	require.Contains(t, labels(view), "Chats")
 }
 
 func TestInstallScreenLinksToGitHubWithSingleUseState(t *testing.T) {
@@ -208,7 +225,7 @@ func TestPlaceholderRendersTitleAndWayBack(t *testing.T) {
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "Status")
-	require.Contains(t, labels(view), "🏠 Home")
+	require.Contains(t, labels(view), "Home")
 }
 
 func TestAddToChatLinksToTelegramGroupPicker(t *testing.T) {
@@ -252,7 +269,7 @@ func TestChatPickerOffersANewChatAlongsideExistingOnes(t *testing.T) {
 		Params: ui.Params{"installation": "5", "repo": "7", "name": "octocat/hello"},
 	})
 	require.NoError(t, err)
-	require.Contains(t, labels(view), "💬 Team")
+	require.Contains(t, labels(view), "Team")
 	require.Contains(t, labels(view), "➕ Add to chat")
 
 	last := view.Rows[len(view.Rows)-1][0]
@@ -274,7 +291,7 @@ func TestChatsListsChatsWithCounts(t *testing.T) {
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
 	require.NoError(t, err)
-	require.Contains(t, labels(view), "💬 Team · 2")
+	require.Contains(t, labels(view), "Team · 2")
 
 	button := view.Rows[0][0]
 	require.Equal(t, "chat_detail", button.Screen)
@@ -294,9 +311,128 @@ func TestChatDetailShowsMuteAndIntegrations(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "Team")
 	require.Contains(t, view.Text, "Notifications are on")
-	require.Contains(t, labels(view), "📂 acme/app")
+	require.Contains(t, labels(view), "acme/app")
 	require.Contains(t, labels(view), "🔇 1h")
-	require.Contains(t, labels(view), "🏷 Set topic")
+	require.Contains(t, labels(view), "Set topic")
+
+	var topicButton ui.Button
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.Screen == "topics" {
+				topicButton = b
+			}
+		}
+	}
+	require.Equal(t, "-100", topicButton.Params["chat"],
+		"the topic button opens the picker, not a prompt for an id")
+}
+
+// A plain group cannot have topics, so it must not be offered them.
+func TestChatDetailHidesTopicsForPlainGroup(t *testing.T) {
+	screen := screens.NewChatDetail(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "group"},
+	}, loc)
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+	require.NotContains(t, labels(view), "Set topic")
+}
+
+func TestChatDetailShowsTopicNameNotItsID(t *testing.T) {
+	topic := int64(5)
+	screen := screens.NewChatDetail(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team",
+			Kind: "supergroup", TopicID: &topic},
+		topics: []storage.ChatTopic{{TopicID: 5, Title: "Releases"}},
+	}, loc)
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "Releases")
+}
+
+func TestTopicsScreenOffersGeneralAndSeenTopics(t *testing.T) {
+	topic := int64(5)
+	screen := screens.NewTopics(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team",
+			Kind: "supergroup", TopicID: &topic},
+		topics: []storage.ChatTopic{
+			{TopicID: 5, Title: "Releases"},
+			{TopicID: 9, Title: ""},
+		},
+	}, loc)
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+
+	all := labels(view)
+	require.Contains(t, all, "General chat")
+	require.Contains(t, all, "Releases", "the current topic is marked")
+	require.Contains(t, all, "Topic 9", "a topic nobody named falls back to its id")
+	require.Contains(t, all, "➕ New topic")
+
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.Label == "Releases" {
+				require.Equal(t, "a_topic", b.Screen)
+				require.Equal(t, "5", b.Params["topic"])
+				require.Equal(t, "-100", b.Params["chat"])
+			}
+		}
+	}
+}
+
+// With nothing discovered the screen still works: General, the create button,
+// and a line saying how a topic becomes visible.
+func TestTopicsScreenExplainsAnEmptyList(t *testing.T) {
+	screen := screens.NewTopics(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup"},
+	}, loc)
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+	require.Contains(t, view.Text, "No topics seen here yet")
+	require.Contains(t, labels(view), "General chat")
+	require.Contains(t, labels(view), "➕ New topic")
+}
+
+func TestIntegrationDetailShowsDisconnectToItsCreator(t *testing.T) {
+	screen := screens.NewIntegrationDetail(&fakeStore{creator: 555}, fakeRoles{}, loc)
+
+	view, err := screen.Render(context.Background(), ui.Session{
+		UserID: 1, TelegramID: 555, Depth: 2,
+		Params: ui.Params{"integration": "7", "chat": "-100", "name": "acme/app"},
+	})
+	require.NoError(t, err)
+	require.Contains(t, labels(view), "Disconnect")
+}
+
+func TestIntegrationDetailHidesDisconnectFromAnotherAdmin(t *testing.T) {
+	screen := screens.NewIntegrationDetail(&fakeStore{creator: 555}, fakeRoles{}, loc)
+
+	view, err := screen.Render(context.Background(), ui.Session{
+		UserID: 2, TelegramID: 999, Depth: 2,
+		Params: ui.Params{"integration": "7", "chat": "-100", "name": "acme/app"},
+	})
+	require.NoError(t, err)
+	require.NotContains(t, labels(view), "Disconnect")
+	require.Contains(t, view.Text, "Another administrator connected this repository")
+	require.Contains(t, labels(view), "Events", "the rest of the screen still works")
+}
+
+func TestIntegrationDetailShowsDisconnectToChatOwner(t *testing.T) {
+	screen := screens.NewIntegrationDetail(&fakeStore{creator: 555}, fakeRoles{owner: 999}, loc)
+
+	view, err := screen.Render(context.Background(), ui.Session{
+		UserID: 2, TelegramID: 999, Depth: 2,
+		Params: ui.Params{"integration": "7", "chat": "-100", "name": "acme/app"},
+	})
+	require.NoError(t, err)
+	require.Contains(t, labels(view), "Disconnect")
 }
 
 func TestEventsScreenDefaultsOnAndShowsExplicitOff(t *testing.T) {
@@ -309,10 +445,10 @@ func TestEventsScreenDefaultsOnAndShowsExplicitOff(t *testing.T) {
 	require.NoError(t, err)
 
 	all := labels(view)
-	require.Contains(t, all, "✅ Everything")
-	require.Contains(t, all, "❌ Nothing")
-	require.Contains(t, all, "❌ push", "an explicit off row must be off")
-	require.Contains(t, all, "✅ pull_request", "a kind without a row defaults to on")
+	require.Contains(t, all, "Everything")
+	require.Contains(t, all, "Nothing")
+	require.Contains(t, all, "push", "an explicit off row must be off")
+	require.Contains(t, all, "pull_request", "a kind without a row defaults to on")
 
 	var toggle string
 	for _, row := range view.Rows {
@@ -334,7 +470,7 @@ func TestFiltersScreenListsRulesAndAddButtons(t *testing.T) {
 		Params: ui.Params{"integration": "5", "name": "acme/app"}})
 	require.NoError(t, err)
 
-	require.Contains(t, labels(view), "✖ 👤 Author: dependabot*")
+	require.Contains(t, labels(view), "👤 Author: dependabot*")
 	require.Contains(t, labels(view), "+ 🌿 Branch")
 
 	var del *ui.Button

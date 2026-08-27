@@ -4,34 +4,36 @@ lang:
   name: Español
 
 nav:
-  back: "◁ Atrás"
+  back: "Atrás"
 
 format:
   datetime: "02.01 15:04"
 
 btn:
-  connect_github: "🔗 Conectar GitHub"
+  connect_github: "Conectar GitHub"
   repos: "🏢 Repositorios"
-  chats: "💬 Chats"
-  status: "📊 Estado"
-  settings: "⚙️ Ajustes"
+  chats: "Chats"
+  status: "Estado"
+  settings: "Ajustes"
   add_to_chat: "➕ Añadir al chat"
-  home: "🏠 Inicio"
+  home: "Inicio"
   more_accounts: "➕ Otra cuenta"
-  configure_access: "🔗 Configurar acceso"
+  configure_access: "Configurar acceso"
   prev_page: "◁ Anteriores"
   next_page: "Siguientes ▷"
-  connect_to_chat: "💬 Conectar al chat"
-  open_github: "🔗 Abrir en GitHub"
-  install_app: "🔗 Instalar GitHub App"
-  installed: "🔄 Ya lo he instalado"
-  events: "🔔 Eventos"
+  connect_to_chat: "Conectar al chat"
+  open_github: "Abrir en GitHub"
+  install_app: "Instalar GitHub App"
+  installed: "Ya lo he instalado"
+  events: "Eventos"
   health: "🩺 Salud"
   filters: "🚫 Filtros"
-  disconnect: "🗑 Desconectar"
-  set_topic: "🏷 Elegir tema"
-  unmute: "🔔 Reactivar"
-  configure: "⚙️ Configurar"
+  disconnect: "Desconectar"
+  set_topic: "Elegir tema"
+  topic_general: "Chat general"
+  topic_new: "➕ Tema nuevo"
+  unmute: "Reactivar"
+  configure: "Configurar"
   add_to_group: "➕ Añadir al grupo"
 
 home:
@@ -68,6 +70,8 @@ add_to_chat:
 result:
   ok: "<b>Listo</b>\n\n{name} está conectado.\nLos eventos ya fluyen: puedes ajustarlos en la sección «Chats»."
   not_admin: "<b>Se necesitan permisos de administrador</b>\n\nSolo un administrador del chat puede conectar repositorios."
+  not_owner: "<b>Lo conectó otro administrador</b>\n\nSolo quien conectó este repositorio — o el propietario del chat — puede desconectarlo."
+  topic_failed: "<b>No se creó el tema</b>\n\nEl chat debe tener temas activados y el bot necesita el permiso «Gestionar temas»."
   duplicate: "<b>Ya conectado</b>\n\n{name} ya envía eventos a este chat."
   error: "<b>No funcionó</b>\n\nInténtalo de nuevo dentro de un rato."
 
@@ -75,7 +79,7 @@ chats:
   empty: "Aún no hay chats con repositorios conectados."
   title: "Chats"
   hint: "Un chat con repositorios conectados puede silenciarse o dirigirse a un tema."
-  entry: "💬 {title} · {n}"
+  entry: "{title} · {n}"
 
 chat_detail:
   muted_until: "🔇 Silenciado hasta {time}"
@@ -84,21 +88,32 @@ chat_detail:
   mute: "🔇 {h}h"
   language: "Idioma"
 
+# The forum topic picker. Telegram cannot list a chat's topics, so this
+# screen offers the ones the bot has seen plus a topic it creates itself.
+topics:
+  title: "Tema"
+  hint: "Elige a dónde llegan las notificaciones de este chat. Un tema aparece en la lista cuando el bot lo ha visto."
+  empty: "Aún no se ha visto ningún tema. Envía /start dentro del tema que quieras y abre esta pantalla otra vez — o deja que el bot cree uno."
+  unnamed: "Tema {id}"
+  # Name of the topic the bot creates on request.
+  new_name: "GitHub"
+
 integration_detail:
   hint: "¿Qué quieres configurar para este repositorio?"
+  not_owner: "Otro administrador conectó este repositorio, así que desconectarlo le corresponde a él o al propietario del chat."
 
 events:
   title: "Eventos"
   hint: "Preajustes arriba, tipos sueltos abajo."
-  preset_all: "✅ Todo"
+  preset_all: "Todo"
   preset_important: "⭐ Solo lo importante"
-  preset_none: "❌ Nada"
+  preset_none: "Nada"
 
 filters:
   title: "Filtros"
   empty: "Todavía no se ignora nada."
   hint: "Los eventos coincidentes no se envían:"
-  entry: "✖ {kind}: {value}"
+  entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
     author: "👤 Autor"
@@ -131,14 +146,12 @@ placeholder:
   body: "Esta sección aún está en obras."
 
 prompt:
-  topic: "Envía el id del tema del foro (un número). 0 envía al chat general."
   filter: "Envía un patrón para el filtro ({kind}). Puedes usar *."
-  topic_invalid: "⚠️ Eso no es un número: el tema no cambió."
   filter_invalid: "⚠️ El patrón está vacío o es demasiado largo."
 
 greeting:
   body: "La configuración se hace en un chat privado."
-  button: "⚙️ Configurar"
+  button: "Configurar"
 
 delivery:
   failed_title: "Error de entrega"

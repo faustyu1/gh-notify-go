@@ -43,7 +43,8 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if len(list) == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("repos.empty"),
-			Rows: [][]ui.Button{{{Label: l.T("btn.configure_access"), Screen: "install"}}},
+			Rows: [][]ui.Button{{{Label: l.T("btn.configure_access"),
+				Icon: render.EmojiLink, Screen: "install"}}},
 		}, nil
 	}
 
@@ -61,12 +62,13 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	rows := make([][]ui.Button, 0, r.pageSize+1)
 	for _, repo := range list[start:end] {
-		icon := "📂"
+		icon := render.EmojiFile
 		if repo.Private {
-			icon = "🔒"
+			icon = render.EmojiLockClosed
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  icon + " " + repo.FullName,
+			Label:  repo.FullName,
+			Icon:   icon,
 			Screen: "repo_detail",
 			Params: ui.Params{
 				"installation": s.Params["installation"],

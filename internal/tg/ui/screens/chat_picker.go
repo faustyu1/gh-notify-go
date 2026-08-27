@@ -46,7 +46,8 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			"chat":         strconv.FormatInt(chat.ChatID, 10),
 		}
 		rows = append(rows, []ui.Button{{
-			Label: "💬 " + chat.Title, Screen: "connect", Params: params,
+			Label: chat.Title, Icon: render.EmojiPeople,
+			Screen: "connect", Params: params,
 		}})
 	}
 

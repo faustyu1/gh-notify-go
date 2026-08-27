@@ -4,34 +4,36 @@ lang:
   name: Deutsch
 
 nav:
-  back: "◁ Zurück"
+  back: "Zurück"
 
 format:
   datetime: "02.01 15:04"
 
 btn:
-  connect_github: "🔗 GitHub verbinden"
+  connect_github: "GitHub verbinden"
   repos: "🏢 Repositories"
-  chats: "💬 Chats"
-  status: "📊 Status"
-  settings: "⚙️ Einstellungen"
+  chats: "Chats"
+  status: "Status"
+  settings: "Einstellungen"
   add_to_chat: "➕ Zum Chat hinzufügen"
-  home: "🏠 Start"
+  home: "Start"
   more_accounts: "➕ Weiteres Konto"
-  configure_access: "🔗 Zugriff einrichten"
+  configure_access: "Zugriff einrichten"
   prev_page: "◁ Neuere"
   next_page: "Ältere ▷"
-  connect_to_chat: "💬 Mit Chat verbinden"
-  open_github: "🔗 Auf GitHub öffnen"
-  install_app: "🔗 GitHub App installieren"
-  installed: "🔄 Ich habe installiert"
-  events: "🔔 Ereignisse"
+  connect_to_chat: "Mit Chat verbinden"
+  open_github: "Auf GitHub öffnen"
+  install_app: "GitHub App installieren"
+  installed: "Ich habe installiert"
+  events: "Ereignisse"
   health: "🩺 Zustand"
   filters: "🚫 Filter"
-  disconnect: "🗑 Trennen"
-  set_topic: "🏷 Thema festlegen"
-  unmute: "🔔 Stummschaltung aufheben"
-  configure: "⚙️ Einrichten"
+  disconnect: "Trennen"
+  set_topic: "Thema festlegen"
+  topic_general: "Allgemeiner Chat"
+  topic_new: "➕ Neues Thema"
+  unmute: "Stummschaltung aufheben"
+  configure: "Einrichten"
   add_to_group: "➕ Zur Gruppe hinzufügen"
 
 home:
@@ -68,6 +70,8 @@ add_to_chat:
 result:
   ok: "<b>Fertig</b>\n\n{name} ist verbunden.\nDie Ereignisse laufen bereits — anpassen kannst du sie im Bereich „Chats“."
   not_admin: "<b>Administratorrechte nötig</b>\n\nNur ein Chat-Administrator kann Repositories verbinden."
+  not_owner: "<b>Von einem anderen Administrator verbunden</b>\n\nNur wer dieses Repository verbunden hat — oder der Besitzer des Chats — kann es trennen."
+  topic_failed: "<b>Thema nicht erstellt</b>\n\nIm Chat müssen Themen aktiviert sein und der Bot braucht das Recht „Themen verwalten“."
   duplicate: "<b>Bereits verbunden</b>\n\n{name} schickt bereits Ereignisse in diesen Chat."
   error: "<b>Hat nicht geklappt</b>\n\nVersuche es gleich noch einmal."
 
@@ -75,7 +79,7 @@ chats:
   empty: "Noch keine Chats mit verbundenen Repositories."
   title: "Chats"
   hint: "Ein Chat mit verbundenen Repositories kann stummgeschaltet oder auf ein Thema gerichtet werden."
-  entry: "💬 {title} · {n}"
+  entry: "{title} · {n}"
 
 chat_detail:
   muted_until: "🔇 Stummgeschaltet bis {time}"
@@ -84,21 +88,32 @@ chat_detail:
   mute: "🔇 {h} Std."
   language: "Sprache"
 
+# The forum topic picker. Telegram cannot list a chat's topics, so this
+# screen offers the ones the bot has seen plus a topic it creates itself.
+topics:
+  title: "Thema"
+  hint: "Wähle, wohin die Benachrichtigungen dieses Chats gehen. Ein Thema erscheint erst, wenn der Bot es gesehen hat."
+  empty: "Noch keine Themen gesehen. Sende /start im gewünschten Thema und öffne diesen Bildschirm erneut — oder lass den Bot eins anlegen."
+  unnamed: "Thema {id}"
+  # Name of the topic the bot creates on request.
+  new_name: "GitHub"
+
 integration_detail:
   hint: "Was möchtest du für dieses Repository einstellen?"
+  not_owner: "Dieses Repository hat ein anderer Administrator verbunden — trennen kann es nur er oder der Besitzer des Chats."
 
 events:
   title: "Ereignisse"
   hint: "Voreinstellungen oben, einzelne Typen darunter."
-  preset_all: "✅ Alles"
+  preset_all: "Alles"
   preset_important: "⭐ Nur Wichtiges"
-  preset_none: "❌ Nichts"
+  preset_none: "Nichts"
 
 filters:
   title: "Filter"
   empty: "Noch wird nichts ignoriert."
   hint: "Passende Ereignisse werden nicht gesendet:"
-  entry: "✖ {kind}: {value}"
+  entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
     author: "👤 Autor"
@@ -131,14 +146,12 @@ placeholder:
   body: "Dieser Bereich ist noch in Arbeit."
 
 prompt:
-  topic: "Sende die ID des Forum-Themas (eine Zahl). 0 liefert in den allgemeinen Chat."
   filter: "Sende ein Muster für den Filter ({kind}). Du kannst * verwenden."
-  topic_invalid: "⚠️ Das ist keine Zahl — das Thema wurde nicht geändert."
   filter_invalid: "⚠️ Das Muster ist leer oder zu lang."
 
 greeting:
   body: "Die Einrichtung läuft im privaten Chat."
-  button: "⚙️ Einrichten"
+  button: "Einrichten"
 
 delivery:
   failed_title: "Zustellung fehlgeschlagen"
