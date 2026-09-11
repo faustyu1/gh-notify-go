@@ -92,7 +92,7 @@ func (w *mdWriter) node(n ast.Node) {
 		w.children(n)
 		w.b.WriteString("</" + tag + ">")
 	case *ast.Link:
-		w.b.WriteString(`<a href="` + Escape(string(n.Destination)) + `">`)
+		w.b.WriteString(`<a href="` + urlEscaper.Replace(string(n.Destination)) + `">`)
 		w.children(n)
 		w.b.WriteString("</a>")
 	case *ast.AutoLink:

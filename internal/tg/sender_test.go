@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -178,6 +179,55 @@ func TestSplitBreaksOnLineBoundaries(t *testing.T) {
 func TestSplitKeepsShortTextIntact(t *testing.T) {
 	require.Equal(t, []string{"short"}, tg.Split("short", 4096))
 }
+
+func TestSplitKeepsBlockTagsBalanced(t *testing.T) {
+	// A <blockquote> opens several lines above where it closes; a plain
+	// line-based split leaves the first part with a dangling <blockquote> and
+	// the second with a stray </blockquote>, which Telegram rejects.
+	var b strings.Builder
+	b.WriteString("<b>acme/app</b>\nuser pushed\n\n<blockquote>\n")
+	for i := range 300 {
+		b.WriteString("• <a href=\"https://x/1\">sha</a> " + strings.Repeat("x", 40) + string(rune('a'+i%26)) + "\n")
+	}
+	b.WriteString("</blockquote>")
+
+	parts := tg.Split(b.String(), 4096)
+	require.Greater(t, len(parts), 1)
+	for _, part := range parts {
+		require.LessOrEqual(t, len([]rune(part)), 4096)
+		requireBalancedHTML(t, part)
+	}
+}
+
+// requireBalancedHTML asserts that every opening tag has a matching closing
+// tag, LIFO. It only knows the small HTML subset the bot emits.
+func requireBalancedHTML(t *testing.T, html string) {
+	t.Helper()
+	var stack []string
+	for _, tag := range tagRe.FindAllString(html, -1) {
+		name := testTagName(tag)
+		if strings.HasPrefix(tag, "</") {
+			require.NotEmptyf(t, stack, "stray </%s> in %q", name, html)
+			require.Equalf(t, name, stack[len(stack)-1], "mismatched tag in %q", html)
+			stack = stack[:len(stack)-1]
+		} else {
+			stack = append(stack, name)
+		}
+	}
+	require.Emptyf(t, stack, "unclosed tags %v in %q", stack, html)
+}
+
+func testTagName(tag string) string {
+	name := strings.TrimPrefix(tag, "<")
+	name = strings.TrimPrefix(name, "/")
+	name = strings.TrimSpace(name)
+	if i := strings.IndexAny(name, " \t\n>"); i >= 0 {
+		name = name[:i]
+	}
+	return name
+}
+
+var tagRe = regexp.MustCompile(`</?[a-zA-Z][^>]*>`)
 
 func TestClassifyErrorReadsRetryAfter(t *testing.T) {
 	permanent, retryAfter := tg.ClassifyError(&telegoapi.Error{

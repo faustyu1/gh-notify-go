@@ -19,6 +19,12 @@ func TestLinkEscapesBothPartsSeparately(t *testing.T) {
 		`<a href="https://x.dev/a?b=1&amp;c=2">pull &lt;request&gt;</a>`, got)
 }
 
+func TestLinkEscapesQuotesInURL(t *testing.T) {
+	// A quote in a URL must not terminate the href attribute early.
+	got := render.Link(`https://x.dev/a"b`, "text")
+	require.Equal(t, `<a href="https://x.dev/a&quot;b">text</a>`, got)
+}
+
 func TestTruncateLeavesShortStringsAlone(t *testing.T) {
 	require.Equal(t, "short", render.Truncate("short", 10))
 }
