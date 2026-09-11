@@ -10,12 +10,16 @@ import (
 
 var escaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
 
+// urlEscaper additionally escapes quotes, which would otherwise terminate the
+// href attribute early and confuse Telegram's entity parser.
+var urlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+
 // Escape makes arbitrary text safe to place inside Telegram HTML.
 func Escape(s string) string { return escaper.Replace(s) }
 
 // Link builds an anchor, escaping the URL and the label independently.
 func Link(url, text string) string {
-	return fmt.Sprintf(`<a href="%s">%s</a>`, Escape(url), Escape(text))
+	return fmt.Sprintf(`<a href="%s">%s</a>`, urlEscaper.Replace(url), Escape(text))
 }
 
 // Truncate cuts on a rune boundary and appends an ellipsis. Cutting by byte

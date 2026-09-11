@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -173,9 +174,16 @@ func isCustomEmojiRejected(err error) bool {
 	return strings.Contains(desc, "custom emoji")
 }
 
-// Split breaks a long message on line boundaries. Splitting mid-tag would
-// produce invalid HTML, and Telegram rejects the whole message when that
-// happens.
+// splitTagRe matches an opening or closing tag in the HTML subset the render
+// package emits (b, i, code, pre, a, blockquote, tg-emoji). Attributes never
+// contain ">" because URLs are escaped before they reach a message.
+var splitTagRe = regexp.MustCompile(`</?[a-zA-Z][^>]*>`)
+
+// Split breaks a long message on line boundaries. Every chunk stays
+// well-formed HTML: a tag still open at the cut point (a <blockquote> opened
+// a few lines above) is closed at the end of the chunk and re-opened at the
+// start of the next. Otherwise Telegram rejects the part with "can't parse
+// entities: Unclosed end tag" and the notification is dropped.
 func Split(html string, limit int) []string {
 	if len([]rune(html)) <= limit {
 		return []string{html}
@@ -184,11 +192,43 @@ func Split(html string, limit int) []string {
 	var (
 		parts   []string
 		current strings.Builder
+		open    []string // raw opening tags, innermost last
 	)
+
+	closeOpen := func(b *strings.Builder) {
+		for i := len(open) - 1; i >= 0; i-- {
+			b.WriteString("</")
+			b.WriteString(splitTagName(open[i]))
+			b.WriteString(">")
+		}
+	}
+	reopen := func(b *strings.Builder) {
+		for _, tag := range open {
+			b.WriteString(tag)
+		}
+	}
 	flush := func() {
-		if current.Len() > 0 {
-			parts = append(parts, strings.TrimRight(current.String(), "\n"))
-			current.Reset()
+		if current.Len() == 0 {
+			return
+		}
+		closeOpen(&current)
+		parts = append(parts, strings.TrimRight(current.String(), "\n"))
+		current.Reset()
+		reopen(&current)
+	}
+	track := func(line string) {
+		for _, tag := range splitTagRe.FindAllString(line, -1) {
+			if strings.HasPrefix(tag, "</") {
+				name := splitTagName(tag)
+				for i := len(open) - 1; i >= 0; i-- {
+					if splitTagName(open[i]) == name {
+						open = append(open[:i], open[i+1:]...)
+						break
+					}
+				}
+			} else {
+				open = append(open, tag)
+			}
 		}
 	}
 
@@ -201,12 +241,25 @@ func Split(html string, limit int) []string {
 			parts = append(parts, string(runes[:limit]))
 			line = string(runes[limit:])
 		}
-		if len([]rune(current.String()))+len([]rune(line))+1 > limit {
+		if current.Len() > 0 && len([]rune(current.String()))+len([]rune(line))+1 > limit {
 			flush()
 		}
 		current.WriteString(line)
 		current.WriteString("\n")
+		track(line)
 	}
 	flush()
 	return parts
+}
+
+// splitTagName extracts the element name from a tag, e.g. "a" from
+// `<a href="…">`, "blockquote" from `</blockquote>`.
+func splitTagName(tag string) string {
+	name := strings.TrimPrefix(tag, "<")
+	name = strings.TrimPrefix(name, "/")
+	name = strings.TrimSpace(name)
+	if i := strings.IndexAny(name, " \t\n>"); i >= 0 {
+		name = name[:i]
+	}
+	return name
 }
