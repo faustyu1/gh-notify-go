@@ -14,20 +14,37 @@ import (
 //
 // limit caps the rendered length in characters; 0 means uncapped. When the
 // render overflows, the source is cut and re-rendered rather than slicing the
-// HTML, which would split a tag.
+// HTML, which would split a tag and make Telegram reject the whole message.
 func Markdown(src string, limit int) string {
 	rendered := renderMarkdown(src)
 	if limit <= 0 || len([]rune(rendered)) <= limit {
 		return rendered
 	}
-	// Cut generously (markup does not count towards the visible length),
-	// then trim the result; if tags still overflow, plain truncation of the
-	// stripped text is the last resort.
-	cut := renderMarkdown(Truncate(src, limit))
-	if len([]rune(cut)) <= limit {
-		return cut
+	// Markup does not count towards the source length, so a body full of
+	// links can render several times longer than its source. Search for the
+	// longest cut of the source whose render still fits: every candidate is
+	// re-rendered, so the result is always well-formed HTML.
+	return renderMarkdown(fitSource(src, limit))
+}
+
+// fitSource returns the longest prefix of src (with an ellipsis, per Truncate)
+// whose render fits in limit characters, or "" when even the shortest one
+// does not. Rendering is monotonic in the source length for the node types
+// this package emits, so a binary search is safe.
+func fitSource(src string, limit int) string {
+	lo, hi := 0, len([]rune(src))
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if len([]rune(renderMarkdown(Truncate(src, mid)))) <= limit {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
 	}
-	return Truncate(Strip(cut), limit)
+	if lo == 0 {
+		return ""
+	}
+	return Truncate(src, lo)
 }
 
 func renderMarkdown(src string) string {
