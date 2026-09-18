@@ -31,7 +31,8 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if len(list) == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("chat_picker.empty"),
-			Rows: [][]ui.Button{{{Label: l.T("btn.add_to_chat"), Screen: "add_to_chat"}}},
+			Rows: [][]ui.Button{{{Label: l.T("btn.add_to_chat"),
+				Icon: render.EmojiPlus, Screen: "add_to_chat"}}},
 		}, nil
 	}
 
@@ -46,7 +47,7 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			"chat":         strconv.FormatInt(chat.ChatID, 10),
 		}
 		rows = append(rows, []ui.Button{{
-			Label: chat.Title, Icon: render.EmojiPeople,
+			Label: chat.Title, Icon: render.EmojiChat,
 			Screen: "connect", Params: params,
 		}})
 	}
@@ -55,7 +56,7 @@ func (c chatPicker) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	// on the empty screen: a user with one connected chat who wants a second
 	// one would otherwise have no route to it.
 	rows = append(rows, []ui.Button{{
-		Label: l.T("btn.add_to_chat"), Screen: "add_to_chat",
+		Label: l.T("btn.add_to_chat"), Icon: render.EmojiPlus, Screen: "add_to_chat",
 	}})
 
 	return ui.View{

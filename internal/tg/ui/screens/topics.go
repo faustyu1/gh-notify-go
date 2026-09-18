@@ -55,7 +55,7 @@ func (t topics) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	// discovery: clearing the topic is how a chat goes back to it.
 	rows := [][]ui.Button{{{
 		Label:  l.T("btn.topic_general"),
-		Icon:   mark(chat.TopicID == nil, render.EmojiPeople),
+		Icon:   mark(chat.TopicID == nil, render.EmojiChat),
 		Screen: "a_topic",
 		Params: ui.Params{"chat": s.Params["chat"], "topic": "0"},
 	}}}
@@ -77,6 +77,7 @@ func (t topics) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	rows = append(rows, []ui.Button{{
 		Label:  l.T("btn.topic_new"),
+		Icon:   render.EmojiPlus,
 		Screen: "a_topic_new",
 		Params: ui.Params{"chat": s.Params["chat"]},
 	}})

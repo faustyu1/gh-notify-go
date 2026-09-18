@@ -11,30 +11,30 @@ format:
 
 btn:
   connect_github: "GitHub verbinden"
-  repos: "🏢 Repositories"
+  repos: "Repositories"
   chats: "Chats"
   status: "Status"
   settings: "Einstellungen"
-  add_to_chat: "➕ Zum Chat hinzufügen"
+  add_to_chat: "Zum Chat hinzufügen"
   home: "Start"
-  more_accounts: "➕ Weiteres Konto"
+  more_accounts: "Weiteres Konto"
   configure_access: "Zugriff einrichten"
-  prev_page: "◁ Neuere"
-  next_page: "Ältere ▷"
+  prev_page: "Neuere"
+  next_page: "Ältere"
   connect_to_chat: "Mit Chat verbinden"
   open_github: "Auf GitHub öffnen"
   install_app: "GitHub App installieren"
   installed: "Ich habe installiert"
   events: "Ereignisse"
-  health: "🩺 Zustand"
-  filters: "🚫 Filter"
+  health: "Zustand"
+  filters: "Filter"
   disconnect: "Trennen"
   set_topic: "Thema festlegen"
   topic_general: "Allgemeiner Chat"
-  topic_new: "➕ Neues Thema"
+  topic_new: "Neues Thema"
   unmute: "Stummschaltung aufheben"
   configure: "Einrichten"
-  add_to_group: "➕ Zur Gruppe hinzufügen"
+  add_to_group: "Zur Gruppe hinzufügen"
 
 home:
   greeting: "Verbinde GitHub, und die Ereignisse deiner Repositories kommen in deine Chats."
@@ -82,10 +82,10 @@ chats:
   entry: "{title} · {n}"
 
 chat_detail:
-  muted_until: "🔇 Stummgeschaltet bis {time}"
+  muted_until: "Stummgeschaltet bis {time}"
   active: "Benachrichtigungen aktiv"
   topic: "Thema: <code>{id}</code>"
-  mute: "🔇 {h} Std."
+  mute: "{h} Std."
   language: "Sprache"
 
 # The forum topic picker. Telegram cannot list a chat's topics, so this
@@ -106,7 +106,7 @@ events:
   title: "Ereignisse"
   hint: "Voreinstellungen oben, einzelne Typen darunter."
   preset_all: "Alles"
-  preset_important: "⭐ Nur Wichtiges"
+  preset_important: "Nur Wichtiges"
   preset_none: "Nichts"
 
 filters:
@@ -116,19 +116,19 @@ filters:
   entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
-    author: "👤 Autor"
-    branch: "🌿 Branch"
-    label: "🏷 Label"
-    action: "⚡ Aktion"
+    author: "Autor"
+    branch: "Branch"
+    label: "Label"
+    action: "Aktion"
 
 health:
   title: "Zustand"
-  broken: "⚠️ <b>Kaputt:</b> {reason}"
-  muted_until: "🔇 Chat stummgeschaltet bis {time}"
-  last_event: "🕐 Letztes Ereignis: {time}"
-  no_events: "🕐 Noch keine Ereignisse"
-  sent24h: "✅ In 24h zugestellt: <b>{n}</b>"
-  failed24h: "❌ Nicht zugestellt: <b>{n}</b>"
+  broken: "<b>Kaputt:</b> {reason}"
+  muted_until: "Chat stummgeschaltet bis {time}"
+  last_event: "Letztes Ereignis: {time}"
+  no_events: "Noch keine Ereignisse"
+  sent24h: "In 24h zugestellt: <b>{n}</b>"
+  failed24h: "Nicht zugestellt: <b>{n}</b>"
 
 status:
   title: "Status"
@@ -138,8 +138,8 @@ status:
 
 settings:
   title: "Einstellungen"
-  stars_line: "⭐ Sterne: eine Benachrichtigung pro Benutzer und Repository — für immer"
-  rate_line: "🚦 Sendelimit: <b>{n}</b> Nachrichten pro Minute und Chat, der Rest wird zu einer Zusammenfassung"
+  stars_line: "Sterne: eine Benachrichtigung pro Benutzer und Repository — für immer"
+  rate_line: "Sendelimit: <b>{n}</b> Nachrichten pro Minute und Chat, der Rest wird zu einer Zusammenfassung"
   language: "Sprache"
 
 placeholder:
@@ -235,8 +235,10 @@ ev:
   ref:
     created: "{user} erstellte {ref}"
     deleted: "{user} löschte {ref}"
-    branch: "Branch"
-    tag: "Tag"
+    branch_created: "{user} erstellte den Branch {ref}"
+    branch_deleted: "{user} löschte den Branch {ref}"
+    tag_created: "{user} erstellte den Tag {ref}"
+    tag_deleted: "{user} löschte den Tag {ref}"
 
   deployment:
     started: "{user} startete ein Deployment in <code>{env}</code>"
@@ -250,10 +252,10 @@ ev:
     multi:
       one: "+{n} Stern: {actors}"
       other: "+{n} Sterne: {actors}"
-    total: "Gesamt: <b>{n}</b> ⭐"
+    total: "Gesamt: <b>{n}</b>"
 
   digest:
-    line: "📋 Zu viele Ereignisse in einer Minute — {n} weitere: {list}"
+    line: "Zu viele Ereignisse in einer Minute — {n} weitere: {list}"
 
   detail: "Details"
   report: "Bericht"

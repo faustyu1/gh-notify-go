@@ -62,7 +62,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	rows := make([][]ui.Button, 0, r.pageSize+1)
 	for _, repo := range list[start:end] {
-		icon := render.EmojiFile
+		icon := render.EmojiFolder
 		if repo.Private {
 			icon = render.EmojiLockClosed
 		}
@@ -84,7 +84,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		var nav []ui.Button
 		if page > 0 {
 			nav = append(nav, ui.Button{
-				Label: l.T("btn.prev_page"), Screen: "repos",
+				Label: l.T("btn.prev_page"), Icon: render.EmojiBack, Screen: "repos",
 				Params: ui.Params{
 					"installation": s.Params["installation"],
 					"page":         strconv.Itoa(page - 1),
@@ -93,7 +93,7 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		}
 		if page < pages-1 {
 			nav = append(nav, ui.Button{
-				Label: l.T("btn.next_page"), Screen: "repos",
+				Label: l.T("btn.next_page"), Icon: render.EmojiForward, Screen: "repos",
 				Params: ui.Params{
 					"installation": s.Params["installation"],
 					"page":         strconv.Itoa(page + 1),

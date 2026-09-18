@@ -16,30 +16,30 @@ format:
 # Telegram button captions cannot carry entities.
 btn:
   connect_github: "Connect GitHub"
-  repos: "🏢 Repositories"
+  repos: "Repositories"
   chats: "Chats"
   status: "Status"
   settings: "Settings"
-  add_to_chat: "➕ Add to chat"
+  add_to_chat: "Add to chat"
   home: "Home"
-  more_accounts: "➕ Another account"
+  more_accounts: "Another account"
   configure_access: "Configure access"
-  prev_page: "◁ Newer"
-  next_page: "Older ▷"
+  prev_page: "Newer"
+  next_page: "Older"
   connect_to_chat: "Connect to chat"
   open_github: "Open on GitHub"
   install_app: "Install GitHub App"
   installed: "I've installed it"
   events: "Events"
-  health: "🩺 Health"
-  filters: "🚫 Filters"
+  health: "Health"
+  filters: "Filters"
   disconnect: "Disconnect"
   set_topic: "Set topic"
   topic_general: "General chat"
-  topic_new: "➕ New topic"
+  topic_new: "New topic"
   unmute: "Unmute"
   configure: "Configure"
-  add_to_group: "➕ Add to group"
+  add_to_group: "Add to group"
 
 home:
   greeting: "Connect GitHub and repository events will arrive in your chats."
@@ -87,10 +87,10 @@ chats:
   entry: "{title} · {n}"
 
 chat_detail:
-  muted_until: "🔇 Muted until {time}"
+  muted_until: "Muted until {time}"
   active: "Notifications are on"
   topic: "Topic: <code>{id}</code>"
-  mute: "🔇 {h}h"
+  mute: "{h}h"
   language: "Language"
 
 # The forum topic picker. Telegram cannot list a chat's topics, so this
@@ -111,7 +111,7 @@ events:
   title: "Events"
   hint: "Presets on top, individual types below."
   preset_all: "Everything"
-  preset_important: "⭐ Important only"
+  preset_important: "Important only"
   preset_none: "Nothing"
 
 filters:
@@ -121,19 +121,19 @@ filters:
   entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
-    author: "👤 Author"
-    branch: "🌿 Branch"
-    label: "🏷 Label"
-    action: "⚡ Action"
+    author: "Author"
+    branch: "Branch"
+    label: "Label"
+    action: "Action"
 
 health:
   title: "Health"
   broken: "<b>Broken:</b> {reason}"
-  muted_until: "🔇 Chat is muted until {time}"
-  last_event: "🕐 Last event: {time}"
-  no_events: "🕐 No events yet"
-  sent24h: "✅ Delivered in 24h: <b>{n}</b>"
-  failed24h: "❌ Not delivered: <b>{n}</b>"
+  muted_until: "Chat is muted until {time}"
+  last_event: "Last event: {time}"
+  no_events: "No events yet"
+  sent24h: "Delivered in 24h: <b>{n}</b>"
+  failed24h: "Not delivered: <b>{n}</b>"
 
 status:
   title: "Status"
@@ -143,8 +143,8 @@ status:
 
 settings:
   title: "Settings"
-  stars_line: "⭐ Stars: one notification per user per repository — ever"
-  rate_line: "🚦 Send limit: <b>{n}</b> messages per minute per chat, the rest folds into a digest"
+  stars_line: "Stars: one notification per user per repository — ever"
+  rate_line: "Send limit: <b>{n}</b> messages per minute per chat, the rest folds into a digest"
   language: "Language"
 
 placeholder:
@@ -246,8 +246,10 @@ ev:
   ref:
     created: "{user} created {ref}"
     deleted: "{user} deleted {ref}"
-    branch: "branch"
-    tag: "tag"
+    branch_created: "{user} created branch {ref}"
+    branch_deleted: "{user} deleted branch {ref}"
+    tag_created: "{user} created tag {ref}"
+    tag_deleted: "{user} deleted tag {ref}"
 
   deployment:
     started: "{user} started a deployment to <code>{env}</code>"
@@ -261,10 +263,10 @@ ev:
     multi:
       one: "+{n} star: {actors}"
       other: "+{n} stars: {actors}"
-    total: "Total: <b>{n}</b> ⭐"
+    total: "Total: <b>{n}</b>"
 
   digest:
-    line: "📋 Too many events in one minute — {n} more: {list}"
+    line: "Too many events in one minute — {n} more: {list}"
 
   detail: "Details"
   report: "Report"

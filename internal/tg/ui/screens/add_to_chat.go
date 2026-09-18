@@ -35,6 +35,7 @@ func (a addToChat) Render(_ context.Context, s ui.Session) (ui.View, error) {
 		Rows: [][]ui.Button{{
 			{
 				Label: l.T("btn.add_to_group"),
+				Icon:  render.EmojiPlus,
 				URL:   fmt.Sprintf("https://t.me/%s?startgroup=add", a.botUser),
 			},
 		}},

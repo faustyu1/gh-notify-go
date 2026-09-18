@@ -43,8 +43,8 @@ func (s statusScreen) Render(ctx context.Context, sess ui.Session) (ui.View, err
 		Text: text,
 		Rows: [][]ui.Button{
 			{
-				{Label: l.T("btn.chats"), Icon: render.EmojiPeople, Screen: "chats"},
-				{Label: l.T("btn.repos"), Screen: "accounts"},
+				{Label: l.T("btn.chats"), Icon: render.EmojiChat, Screen: "chats"},
+				{Label: l.T("btn.repos"), Icon: render.EmojiOffice, Screen: "accounts"},
 			},
 		},
 	}, nil

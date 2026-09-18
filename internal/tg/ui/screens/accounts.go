@@ -37,22 +37,24 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	rows := make([][]ui.Button, 0, len(installations)+1)
 	for _, it := range installations {
-		icon := "🏢"
+		icon := render.EmojiOffice
 		if it.AccountType == "User" {
-			icon = "👤"
+			icon = render.EmojiProfile
 		}
 		// A suspended installation cannot mint tokens, so it is labelled
 		// rather than offered as if it worked.
 		if it.Suspended {
-			icon = "⚠️"
+			icon = render.EmojiWarning
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  icon + " " + it.AccountLogin,
+			Label:  it.AccountLogin,
+			Icon:   icon,
 			Screen: "repos",
 			Params: ui.Params{"installation": strconv.FormatInt(it.ID, 10)},
 		}})
 	}
-	rows = append(rows, []ui.Button{{Label: l.T("btn.more_accounts"), Screen: "install"}})
+	rows = append(rows, []ui.Button{{Label: l.T("btn.more_accounts"),
+		Icon: render.EmojiPlus, Screen: "install"}})
 
 	return ui.View{
 		Text: render.Emoji(render.EmojiProfile, "👤") + " <b>" + l.T("accounts.title") +

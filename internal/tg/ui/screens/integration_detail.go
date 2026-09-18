@@ -54,6 +54,7 @@ func (i integrationDetail) Render(ctx context.Context, s ui.Session) (ui.View, e
 		}},
 		{{
 			Label:  l.T("btn.health"),
+			Icon:   render.EmojiHealth,
 			Screen: "health",
 			Params: ui.Params{
 				"integration": s.Params["integration"],
@@ -63,6 +64,7 @@ func (i integrationDetail) Render(ctx context.Context, s ui.Session) (ui.View, e
 		}},
 		{{
 			Label:  l.T("btn.filters"),
+			Icon:   render.EmojiBlocked,
 			Screen: "filters",
 			Params: ui.Params{
 				"integration": s.Params["integration"],

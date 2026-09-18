@@ -42,7 +42,7 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	b.line(render.Emoji(render.EmojiPeople, "👥") + " <b>" + render.Escape(chat.Title) + "</b>")
 
 	if chat.MutedUntil != nil && chat.MutedUntil.After(time.Now()) {
-		b.line(l.T("chat_detail.muted_until",
+		b.line(render.Emoji(render.EmojiMuted, "🔇") + " " + l.T("chat_detail.muted_until",
 			"time", chat.MutedUntil.Local().Format(l.DateTimeLayout())))
 	} else {
 		b.line(l.T("chat_detail.active"))
@@ -68,14 +68,12 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 
 	rows := make([][]ui.Button, 0, len(integrations)+5)
 	for _, it := range integrations {
-		// A broken integration keeps a plain warning sign: nothing in the
-		// premium set says "this stopped working".
-		label, icon := it.RepoFullName, render.EmojiFile
+		icon := render.EmojiFolder
 		if it.BrokenReason != nil {
-			label, icon = "⚠️ "+it.RepoFullName, ""
+			icon = render.EmojiWarning
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  label,
+			Label:  it.RepoFullName,
 			Icon:   icon,
 			Screen: "integration_detail",
 			Params: ui.Params{
@@ -89,9 +87,9 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	// Mute presets. Action buttons carry the chat id; the handler applies the
 	// window and reopens this screen.
 	mute := []ui.Button{
-		{Label: l.T("chat_detail.mute", "h", "1"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "1"}},
-		{Label: l.T("chat_detail.mute", "h", "8"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "8"}},
-		{Label: l.T("chat_detail.mute", "h", "24"), Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "24"}},
+		{Label: l.T("chat_detail.mute", "h", "1"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "1"}},
+		{Label: l.T("chat_detail.mute", "h", "8"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "8"}},
+		{Label: l.T("chat_detail.mute", "h", "24"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "24"}},
 		{Label: l.T("btn.unmute"), Icon: render.EmojiBell, Screen: "a_mute",
 			Params: ui.Params{"chat": s.Params["chat"], "hours": "0"}},
 	}
@@ -108,7 +106,8 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	}
 
 	if len(integrations) == 0 {
-		rows = append(rows, []ui.Button{{Label: l.T("btn.repos"), Screen: "accounts"}})
+		rows = append(rows, []ui.Button{{Label: l.T("btn.repos"),
+			Icon: render.EmojiOffice, Screen: "accounts"}})
 	}
 
 	return ui.View{Text: b.String(), Rows: rows}, nil

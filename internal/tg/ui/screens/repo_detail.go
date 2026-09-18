@@ -31,7 +31,7 @@ func (r repoDetail) Render(_ context.Context, s ui.Session) (ui.View, error) {
 		Rows: [][]ui.Button{
 			{{
 				Label:  l.T("btn.connect_to_chat"),
-				Icon:   render.EmojiPeople,
+				Icon:   render.EmojiChat,
 				Screen: "chat_picker",
 				Params: s.Params,
 			}},

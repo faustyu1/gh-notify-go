@@ -12,30 +12,30 @@ format:
 
 btn:
   connect_github: "Подключить GitHub"
-  repos: "🏢 Репозитории"
+  repos: "Репозитории"
   chats: "Чаты"
   status: "Статус"
   settings: "Настройки"
-  add_to_chat: "➕ Добавить в чат"
+  add_to_chat: "Добавить в чат"
   home: "В начало"
-  more_accounts: "➕ Ещё аккаунт"
+  more_accounts: "Ещё аккаунт"
   configure_access: "Настроить доступ"
-  prev_page: "◁ Раньше"
-  next_page: "Вперёд ▷"
+  prev_page: "Раньше"
+  next_page: "Вперёд"
   connect_to_chat: "Подключить к чату"
   open_github: "Открыть на GitHub"
   install_app: "Установить GitHub App"
   installed: "Я установил"
   events: "События"
-  health: "🩺 Здоровье"
-  filters: "🚫 Фильтры"
+  health: "Здоровье"
+  filters: "Фильтры"
   disconnect: "Отключить"
   set_topic: "Указать топик"
   topic_general: "Общий чат"
-  topic_new: "➕ Новый топик"
+  topic_new: "Новый топик"
   unmute: "Снять"
   configure: "Настроить"
-  add_to_group: "➕ Добавить в группу"
+  add_to_group: "Добавить в группу"
 
 home:
   greeting: "Подключи GitHub, и события репозиториев будут приходить в твои чаты."
@@ -83,10 +83,10 @@ chats:
   entry: "{title} · {n}"
 
 chat_detail:
-  muted_until: "🔇 Замьютен до {time}"
+  muted_until: "Замьютен до {time}"
   active: "Уведомления активны"
   topic: "Топик: <code>{id}</code>"
-  mute: "🔇 {h}ч"
+  mute: "{h}ч"
   language: "Язык"
 
 # The forum topic picker. Telegram cannot list a chat's topics, so this
@@ -107,7 +107,7 @@ events:
   title: "События"
   hint: "Пресеты сверху, отдельные типы ниже."
   preset_all: "Всё"
-  preset_important: "⭐ Только важное"
+  preset_important: "Только важное"
   preset_none: "Ничего"
 
 filters:
@@ -117,19 +117,19 @@ filters:
   entry: "{kind}: {value}"
   add: "+ {label}"
   kind:
-    author: "👤 Автор"
-    branch: "🌿 Ветка"
-    label: "🏷 Лейбл"
-    action: "⚡ Действие"
+    author: "Автор"
+    branch: "Ветка"
+    label: "Лейбл"
+    action: "Действие"
 
 health:
   title: "Здоровье"
-  broken: "⚠️ <b>Сломана:</b> {reason}"
-  muted_until: "🔇 Чат замьютен до {time}"
-  last_event: "🕐 Последнее событие: {time}"
-  no_events: "🕐 Событий ещё не было"
-  sent24h: "✅ Доставлено за 24ч: <b>{n}</b>"
-  failed24h: "❌ Не доставлено: <b>{n}</b>"
+  broken: "<b>Сломана:</b> {reason}"
+  muted_until: "Чат замьютен до {time}"
+  last_event: "Последнее событие: {time}"
+  no_events: "Событий ещё не было"
+  sent24h: "Доставлено за 24ч: <b>{n}</b>"
+  failed24h: "Не доставлено: <b>{n}</b>"
 
 status:
   title: "Статус"
@@ -139,8 +139,8 @@ status:
 
 settings:
   title: "Настройки"
-  stars_line: "⭐ Звёзды: одно уведомление на пользователя в репозитории — навсегда"
-  rate_line: "🚦 Лимит отправки: <b>{n}</b> сообщений в минуту на чат, остальное сворачивается в дайджест"
+  stars_line: "Звёзды: одно уведомление на пользователя в репозитории — навсегда"
+  rate_line: "Лимит отправки: <b>{n}</b> сообщений в минуту на чат, остальное сворачивается в дайджест"
   language: "Язык"
 
 placeholder:
@@ -238,8 +238,10 @@ ev:
   ref:
     created: "{user} создал {ref}"
     deleted: "{user} удалил {ref}"
-    branch: "ветка"
-    tag: "тег"
+    branch_created: "{user} создал ветку {ref}"
+    branch_deleted: "{user} удалил ветку {ref}"
+    tag_created: "{user} создал тег {ref}"
+    tag_deleted: "{user} удалил тег {ref}"
 
   deployment:
     started: "{user} начал деплой в <code>{env}</code>"
@@ -254,10 +256,10 @@ ev:
       one: "+{n} звезда: {actors}"
       few: "+{n} звезды: {actors}"
       many: "+{n} звёзд: {actors}"
-    total: "Всего: <b>{n}</b> ⭐"
+    total: "Всего: <b>{n}</b>"
 
   digest:
-    line: "📋 Слишком много событий за минуту — ещё {n}: {list}"
+    line: "Слишком много событий за минуту — ещё {n}: {list}"
 
   detail: "Подробнее"
   report: "Отчёт"

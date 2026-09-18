@@ -18,8 +18,7 @@ var eventPresets = []struct {
 	icon   string
 }{
 	{"events.preset_all", "all", render.EmojiCheck},
-	// "important" keeps its Unicode star: the premium set has no equivalent.
-	{"events.preset_important", "important", ""},
+	{"events.preset_important", "important", render.EmojiStar},
 	{"events.preset_none", "none", render.EmojiCross},
 }
 

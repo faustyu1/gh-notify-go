@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
@@ -45,6 +46,6 @@ func renderDigest(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 		}
 	}
 
-	return loc.T("ev.digest.line",
+	return render.Emoji(render.EmojiDigest, "📋") + " " + loc.T("ev.digest.line",
 		"n", len(p.Items), "list", strings.Join(parts, ", ")), nil
 }

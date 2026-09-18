@@ -51,14 +51,14 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		Text: text,
 		Rows: [][]ui.Button{
 			{
-				{Label: l.T("btn.repos"), Screen: "accounts"},
-				{Label: l.T("btn.chats"), Icon: render.EmojiPeople, Screen: "chats"},
+				{Label: l.T("btn.repos"), Icon: render.EmojiOffice, Screen: "accounts"},
+				{Label: l.T("btn.chats"), Icon: render.EmojiChat, Screen: "chats"},
 			},
 			{
 				{Label: l.T("btn.status"), Icon: render.EmojiStats, Screen: "status"},
 				{Label: l.T("btn.settings"), Icon: render.EmojiSettings, Screen: "settings"},
 			},
-			{{Label: l.T("btn.add_to_chat"), Screen: "add_to_chat"}},
+			{{Label: l.T("btn.add_to_chat"), Icon: render.EmojiPlus, Screen: "add_to_chat"}},
 		},
 	}, nil
 }

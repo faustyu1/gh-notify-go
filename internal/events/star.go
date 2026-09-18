@@ -31,7 +31,7 @@ func renderStar(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 	}
 
 	var b strings.Builder
-	b.WriteString("⭐ <b>")
+	b.WriteString(render.Emoji(render.EmojiStar, "⭐") + " <b>")
 	b.WriteString(render.Escape(p.RepoFullName))
 	b.WriteString("</b>\n")
 
@@ -49,6 +49,7 @@ func renderStar(loc *i18n.Localizer, raw json.RawMessage) (string, error) {
 		))
 		b.WriteString("\n")
 	}
-	b.WriteString("\n" + loc.T("ev.star.total", "n", p.TotalStars))
+	b.WriteString("\n" + loc.T("ev.star.total", "n", p.TotalStars) +
+		" " + render.Emoji(render.EmojiStar, "⭐"))
 	return b.String(), nil
 }

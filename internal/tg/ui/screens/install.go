@@ -53,7 +53,7 @@ func (i install) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		Text: text,
 		Rows: [][]ui.Button{
 			{{Label: l.T("btn.install_app"), Icon: render.EmojiLink, URL: url}},
-			{{Label: l.T("btn.installed"), Icon: render.EmojiLoading, Screen: "accounts"}},
+			{{Label: l.T("btn.installed"), Icon: render.EmojiRefresh, Screen: "accounts"}},
 		},
 	}, nil
 }

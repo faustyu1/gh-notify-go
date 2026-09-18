@@ -24,11 +24,12 @@ func (f filtersScreen) Name() string { return "filters" }
 var filterKinds = []struct {
 	kind string
 	key  string
+	icon string
 }{
-	{"author", "filters.kind.author"},
-	{"branch", "filters.kind.branch"},
-	{"label", "filters.kind.label"},
-	{"action", "filters.kind.action"},
+	{"author", "filters.kind.author", render.EmojiProfile},
+	{"branch", "filters.kind.branch", render.EmojiBranch},
+	{"label", "filters.kind.label", render.EmojiTag},
+	{"action", "filters.kind.action", render.EmojiBolt},
 }
 
 func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) {
@@ -40,7 +41,7 @@ func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error
 		return ui.View{}, err
 	}
 
-	text := render.Emoji(render.EmojiCross, "🚫") + " <b>" + l.T("filters.title") + "</b>\n\n" +
+	text := render.Emoji(render.EmojiBlocked, "🚫") + " <b>" + l.T("filters.title") + "</b>\n\n" +
 		render.Escape(s.Params["name"]) + "\n\n"
 	var rows [][]ui.Button
 	if len(list) == 0 {
@@ -51,7 +52,7 @@ func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error
 			rows = append(rows, []ui.Button{{
 				Label: l.T("filters.entry",
 					"kind", kindLabel(l, flt.Kind), "value", flt.Value),
-				Icon:   render.EmojiCross,
+				Icon:   render.EmojiRemove,
 				Screen: "a_filter_del",
 				Params: ui.Params{
 					"filter":      fmt.Sprint(flt.ID),
@@ -66,6 +67,7 @@ func (f filtersScreen) Render(ctx context.Context, s ui.Session) (ui.View, error
 	for _, k := range filterKinds {
 		addRow = append(addRow, ui.Button{
 			Label:  l.T("filters.add", "label", l.T(k.key)),
+			Icon:   k.icon,
 			Screen: "a_filter_add",
 			Params: ui.Params{"integration": integration, "kind": k.kind, "name": s.Params["name"]},
 		})

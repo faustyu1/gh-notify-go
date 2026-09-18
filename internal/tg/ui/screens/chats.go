@@ -30,7 +30,8 @@ func (c chatsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) 
 	if len(list) == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("chats.empty"),
-			Rows: [][]ui.Button{{{Label: l.T("btn.repos"), Screen: "accounts"}}},
+			Rows: [][]ui.Button{{{Label: l.T("btn.repos"),
+				Icon: render.EmojiOffice, Screen: "accounts"}}},
 		}, nil
 	}
 
@@ -39,12 +40,13 @@ func (c chatsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error) 
 		rows = append(rows, []ui.Button{{
 			Label: l.T("chats.entry",
 				"title", chat.Title, "n", chat.IntegrationCount),
-			Icon:   render.EmojiPeople,
+			Icon:   render.EmojiChat,
 			Screen: "chat_detail",
 			Params: ui.Params{"chat": strconv.FormatInt(chat.TelegramChatID, 10)},
 		}})
 	}
-	rows = append(rows, []ui.Button{{Label: l.T("btn.add_to_chat"), Screen: "add_to_chat"}})
+	rows = append(rows, []ui.Button{{Label: l.T("btn.add_to_chat"),
+		Icon: render.EmojiPlus, Screen: "add_to_chat"}})
 
 	return ui.View{
 		Text: render.Emoji(render.EmojiPeople, "👥") + " <b>" + l.T("chats.title") +

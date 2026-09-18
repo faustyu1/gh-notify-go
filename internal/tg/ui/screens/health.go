@@ -36,26 +36,29 @@ func (h healthScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 		return ui.View{}, err
 	}
 
-	text := render.Emoji(render.EmojiStats, "🩺") + " <b>" + l.T("health.title") + "</b>\n\n" +
+	text := render.Emoji(render.EmojiHealth, "🩺") + " <b>" + l.T("health.title") + "</b>\n\n" +
 		"📂 " + render.Escape(health.RepoFullName) + " → 💬 " + render.Escape(health.ChatTitle) + "\n"
 
 	if health.BrokenReason != nil {
-		text += l.T("health.broken", "reason", render.Escape(*health.BrokenReason)) + "\n"
+		text += render.Emoji(render.EmojiWarning, "⚠️") + " " +
+			l.T("health.broken", "reason", render.Escape(*health.BrokenReason)) + "\n"
 	}
 	if health.MutedUntil != nil && health.MutedUntil.After(time.Now()) {
-		text += l.T("health.muted_until",
+		text += render.Emoji(render.EmojiMuted, "🔇") + " " + l.T("health.muted_until",
 			"time", health.MutedUntil.Local().Format(l.DateTimeLayout())) + "\n"
 	}
 	if health.LastEventAt != nil {
-		text += l.T("health.last_event",
+		text += render.Emoji(render.EmojiTime, "🕐") + " " + l.T("health.last_event",
 			"time", health.LastEventAt.Local().Format(l.DateTimeLayout())) + "\n"
 	} else {
-		text += l.T("health.no_events") + "\n"
+		text += render.Emoji(render.EmojiTime, "🕐") + " " + l.T("health.no_events") + "\n"
 	}
 
-	text += "\n" + l.T("health.sent24h", "n", health.Sent24h)
+	text += "\n" + render.Emoji(render.EmojiCheck, "✅") + " " +
+		l.T("health.sent24h", "n", health.Sent24h)
 	if health.Failed24h > 0 {
-		text += "\n" + l.T("health.failed24h", "n", health.Failed24h)
+		text += "\n" + render.Emoji(render.EmojiCross, "❌") + " " +
+			l.T("health.failed24h", "n", health.Failed24h)
 	}
 
 	return ui.View{

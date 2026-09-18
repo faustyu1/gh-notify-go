@@ -121,7 +121,7 @@ func TestHomeWithNoInstallationOffersInstall(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "tg-emoji")
 	require.Contains(t, labels(view), "Connect GitHub")
-	require.NotContains(t, labels(view), "🏢 Repositories")
+	require.NotContains(t, labels(view), "Repositories")
 }
 
 func TestHomeRendersInUserLanguage(t *testing.T) {
@@ -146,7 +146,7 @@ func TestHomeWithInstallationShowsCounts(t *testing.T) {
 	require.Contains(t, view.Text, "2")
 	require.Contains(t, view.Text, "5")
 	require.Contains(t, view.Text, "3")
-	require.Contains(t, labels(view), "🏢 Repositories")
+	require.Contains(t, labels(view), "Repositories")
 	require.Contains(t, labels(view), "Chats")
 }
 
@@ -181,9 +181,9 @@ func TestAccountsListsEachInstallation(t *testing.T) {
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
 	require.NoError(t, err)
-	require.Contains(t, labels(view), "🏢 acme")
+	require.Contains(t, labels(view), "acme")
 	// A suspended installation must be visibly different, not silently listed.
-	require.Contains(t, labels(view), "⚠️ octocat")
+	require.Contains(t, labels(view), "octocat")
 }
 
 func TestReposPaginates(t *testing.T) {
@@ -199,8 +199,8 @@ func TestReposPaginates(t *testing.T) {
 		ui.Session{UserID: 1, Depth: 3, Params: ui.Params{"installation": "1"}})
 	require.NoError(t, err)
 
-	require.Contains(t, labels(view), "Older ▷")
-	require.NotContains(t, labels(view), "◁ Back ")
+	require.Contains(t, labels(view), "Older")
+	require.NotContains(t, labels(view), "Back ")
 
 	page2, err := screen.Render(context.Background(),
 		ui.Session{UserID: 1, Depth: 3, Params: ui.Params{"installation": "1", "page": "1"}})
@@ -236,7 +236,7 @@ func TestAddToChatLinksToTelegramGroupPicker(t *testing.T) {
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "Add to chat")
-	require.Contains(t, labels(view), "➕ Add to group")
+	require.Contains(t, labels(view), "Add to group")
 
 	var url string
 	for _, row := range view.Rows {
@@ -270,7 +270,7 @@ func TestChatPickerOffersANewChatAlongsideExistingOnes(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Contains(t, labels(view), "Team")
-	require.Contains(t, labels(view), "➕ Add to chat")
+	require.Contains(t, labels(view), "Add to chat")
 
 	last := view.Rows[len(view.Rows)-1][0]
 	require.Equal(t, "add_to_chat", last.Screen, "the way in comes after the chats")
@@ -281,7 +281,7 @@ func TestChatPickerWithNoChatsOffersTheWayIn(t *testing.T) {
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
 	require.NoError(t, err)
-	require.Contains(t, labels(view), "➕ Add to chat")
+	require.Contains(t, labels(view), "Add to chat")
 }
 
 func TestChatsListsChatsWithCounts(t *testing.T) {
@@ -312,7 +312,7 @@ func TestChatDetailShowsMuteAndIntegrations(t *testing.T) {
 	require.Contains(t, view.Text, "Team")
 	require.Contains(t, view.Text, "Notifications are on")
 	require.Contains(t, labels(view), "acme/app")
-	require.Contains(t, labels(view), "🔇 1h")
+	require.Contains(t, labels(view), "1h")
 	require.Contains(t, labels(view), "Set topic")
 
 	var topicButton ui.Button
@@ -372,7 +372,7 @@ func TestTopicsScreenOffersGeneralAndSeenTopics(t *testing.T) {
 	require.Contains(t, all, "General chat")
 	require.Contains(t, all, "Releases", "the current topic is marked")
 	require.Contains(t, all, "Topic 9", "a topic nobody named falls back to its id")
-	require.Contains(t, all, "➕ New topic")
+	require.Contains(t, all, "New topic")
 
 	for _, row := range view.Rows {
 		for _, b := range row {
@@ -397,7 +397,7 @@ func TestTopicsScreenExplainsAnEmptyList(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, view.Text, "No topics seen here yet")
 	require.Contains(t, labels(view), "General chat")
-	require.Contains(t, labels(view), "➕ New topic")
+	require.Contains(t, labels(view), "New topic")
 }
 
 func TestIntegrationDetailShowsDisconnectToItsCreator(t *testing.T) {
@@ -470,8 +470,8 @@ func TestFiltersScreenListsRulesAndAddButtons(t *testing.T) {
 		Params: ui.Params{"integration": "5", "name": "acme/app"}})
 	require.NoError(t, err)
 
-	require.Contains(t, labels(view), "👤 Author: dependabot*")
-	require.Contains(t, labels(view), "+ 🌿 Branch")
+	require.Contains(t, labels(view), "Author: dependabot*")
+	require.Contains(t, labels(view), "+ Branch")
 
 	var del *ui.Button
 	for _, row := range view.Rows {
