@@ -13,7 +13,7 @@ func TestRecordChatTopicKeepsKnownName(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, err)
 
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 5, "Releases"))
@@ -47,7 +47,7 @@ func TestTopicsForChatPutsNamedTopicsFirst(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 9, ""))
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 4, "Releases"))
 
@@ -63,7 +63,7 @@ func TestForgetChatTopicDropsOnlyThatTopic(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 4, "Releases"))
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 5, "Support"))
 
@@ -80,7 +80,7 @@ func TestClearTopicForgetsTheTopicItCleared(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 4, "Releases"))
 	require.NoError(t, store.RecordChatTopic(ctx, -100, 5, "Support"))
 	topic := int64(4)
@@ -102,7 +102,7 @@ func TestCreatorTelegramForIntegration(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)

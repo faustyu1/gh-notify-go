@@ -70,9 +70,9 @@ func TestUpsertChatRefreshesTitle(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	id, err := store.UpsertChat(ctx, -100, "Old name", "supergroup")
+	id, err := store.UpsertChat(ctx, -100, "Old name", "supergroup", false)
 	require.NoError(t, err)
-	again, err := store.UpsertChat(ctx, -100, "New name", "supergroup")
+	again, err := store.UpsertChat(ctx, -100, "New name", "supergroup", false)
 	require.NoError(t, err)
 	require.Equal(t, id, again)
 
@@ -88,7 +88,7 @@ func TestIntegrationsForRepoJoinsChatAndOwner(t *testing.T) {
 
 	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
-	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, err)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err = store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
@@ -108,7 +108,7 @@ func TestIntegrationsForRepoSkipsMutedChats(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestEventEnabledDefaultsToTrueWithNoRow(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, _ := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 

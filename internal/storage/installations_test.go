@@ -68,7 +68,7 @@ func TestDeleteInstallationCascadesToIntegrations(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, _ = store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 

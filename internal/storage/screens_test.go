@@ -28,7 +28,7 @@ func TestChatsForUserCountsIntegrations(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestCandidateChatsIncludeChatsWithNoIntegrationYet(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Fresh group", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Fresh group", "supergroup", false)
 	require.NoError(t, store.AddChatManager(ctx, chatID, userID))
 
 	// ChatsForUser is integration-based and must still be empty here.
@@ -69,7 +69,7 @@ func TestCandidateChatsExcludeOtherPeoplesChats(t *testing.T) {
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
 	otherID, _, _ := store.UpsertUser(ctx, 999, "en")
-	chatID, _ := store.UpsertChat(ctx, -200, "Not yours", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -200, "Not yours", "supergroup", false)
 	require.NoError(t, store.AddChatManager(ctx, chatID, otherID))
 
 	candidates, err := store.CandidateChatsForUser(ctx, userID)
@@ -82,7 +82,7 @@ func TestAddChatManagerIsIdempotent(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 
 	require.NoError(t, store.AddChatManager(ctx, chatID, userID))
 	require.NoError(t, store.AddChatManager(ctx, chatID, userID))
@@ -97,7 +97,7 @@ func TestCountsForUserSummarisesEverything(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestClearTopicRemovesTopicID(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	_, err := store.Pool().Exec(ctx,
 		`UPDATE chats SET topic_id = 77 WHERE id = $1`, chatID)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestMarkIntegrationBrokenExcludesItFromFanout(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, _ := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 
@@ -149,7 +149,7 @@ func TestTelegramChatForIntegrationAndFilter(t *testing.T) {
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, _ := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	filterID, err := store.AddFilter(ctx, integrationID, "author", "dependabot")
@@ -175,26 +175,30 @@ func TestTelegramChatLookupsFailOnUnknownIDs(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Being removed from a chat stops its deliveries at once, and being added
-// back starts them again — nothing else ever clears broken_reason.
-func TestChatIntegrationsBrokenRoundTrips(t *testing.T) {
+// Being removed from a chat deletes it and everything wired to it, so the
+// picker and the chats screen stop offering a chat the bot is no longer in.
+func TestDeleteChatCascades(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(t)
 
 	userID, _, _ := store.UpsertUser(ctx, 555, "en")
-	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, _ := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	_, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)
 	require.NoError(t, err)
+	require.NoError(t, store.AddChatManager(ctx, chatID, userID))
+	require.NoError(t, store.RecordChatTopic(ctx, -100, 5, "Releases"))
 
-	require.NoError(t, store.MarkChatIntegrationsBroken(ctx, -100, "bot removed from chat"))
+	require.NoError(t, store.DeleteChat(ctx, -100))
+
+	_, err = store.ChatByTelegramID(ctx, -100)
+	require.Error(t, err)
+
 	list, err := store.IntegrationsInChat(ctx, chatID)
 	require.NoError(t, err)
-	require.NotNil(t, list[0].BrokenReason)
-	require.Equal(t, "bot removed from chat", *list[0].BrokenReason)
+	require.Empty(t, list)
 
-	require.NoError(t, store.ClearChatIntegrationsBroken(ctx, -100))
-	list, err = store.IntegrationsInChat(ctx, chatID)
+	topics, err := store.TopicsForChat(ctx, chatID)
 	require.NoError(t, err)
-	require.Nil(t, list[0].BrokenReason)
+	require.Empty(t, topics)
 }

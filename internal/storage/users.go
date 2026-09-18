@@ -22,19 +22,21 @@ func (s *Store) UpsertUser(
 	return id, storedLanguage, nil
 }
 
-// UpsertChat refreshes the cached title on every call, because a group can be
-// renamed and a stale title in the chat picker is confusing. A chat has no
-// language of its own: notifications resolve the integration owner's locale
-// at claim time.
+// UpsertChat refreshes the cached title and forum flag on every call, because
+// a group can be renamed and a stale title in the chat picker is confusing. A
+// chat has no language of its own: notifications resolve the integration
+// owner's locale at claim time.
 func (s *Store) UpsertChat(
-	ctx context.Context, telegramChatID int64, title, kind string,
+	ctx context.Context, telegramChatID int64, title, kind string, isForum bool,
 ) (int64, error) {
 	var id int64
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO chats (telegram_chat_id, title, kind) VALUES ($1, $2, $3)
+		INSERT INTO chats (telegram_chat_id, title, kind, is_forum)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (telegram_chat_id)
-		DO UPDATE SET title = EXCLUDED.title, kind = EXCLUDED.kind
-		RETURNING id`, telegramChatID, title, kind).Scan(&id)
+		DO UPDATE SET title = EXCLUDED.title, kind = EXCLUDED.kind,
+		              is_forum = EXCLUDED.is_forum
+		RETURNING id`, telegramChatID, title, kind, isForum).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("upsert chat: %w", err)
 	}

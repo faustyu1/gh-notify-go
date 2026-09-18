@@ -300,7 +300,7 @@ func TestChatsListsChatsWithCounts(t *testing.T) {
 
 func TestChatDetailShowsMuteAndIntegrations(t *testing.T) {
 	screen := screens.NewChatDetail(&fakeStore{
-		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup"},
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup", IsForum: true},
 		chatIntegrations: []domain.Integration{
 			{ID: 7, RepoFullName: "acme/app"},
 		},
@@ -337,6 +337,45 @@ func TestChatDetailHidesTopicsForPlainGroup(t *testing.T) {
 		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
 	require.NoError(t, err)
 	require.NotContains(t, labels(view), "Set topic")
+}
+
+// A supergroup without topics is no different from a plain group here.
+func TestChatDetailHidesTopicsForNonForumSupergroup(t *testing.T) {
+	screen := screens.NewChatDetail(&fakeStore{
+		chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup"},
+	}, loc)
+
+	view, err := screen.Render(context.Background(),
+		ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+	require.NoError(t, err)
+	require.NotContains(t, labels(view), "Set topic")
+}
+
+// Unmute is only offered while the chat is muted; otherwise it would be a
+// button that does nothing.
+func TestChatDetailUnmuteOnlyWhenMuted(t *testing.T) {
+	muted := time.Now().Add(time.Hour)
+
+	t.Run("muted", func(t *testing.T) {
+		screen := screens.NewChatDetail(&fakeStore{
+			chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team",
+				Kind: "supergroup", MutedUntil: &muted},
+		}, loc)
+		view, err := screen.Render(context.Background(),
+			ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+		require.NoError(t, err)
+		require.Contains(t, labels(view), "Unmute")
+	})
+
+	t.Run("active", func(t *testing.T) {
+		screen := screens.NewChatDetail(&fakeStore{
+			chat: domain.Chat{ID: 1, TelegramChatID: -100, Title: "Team", Kind: "supergroup"},
+		}, loc)
+		view, err := screen.Render(context.Background(),
+			ui.Session{UserID: 1, Depth: 2, Params: ui.Params{"chat": "-100"}})
+		require.NoError(t, err)
+		require.NotContains(t, labels(view), "Unmute")
+	})
 }
 
 func TestChatDetailShowsTopicNameNotItsID(t *testing.T) {

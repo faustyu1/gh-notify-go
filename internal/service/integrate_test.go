@@ -31,7 +31,7 @@ func newIntegrator(t *testing.T, allow bool) (*service.Integrator, *storage.Stor
 
 	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
-	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, err)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 

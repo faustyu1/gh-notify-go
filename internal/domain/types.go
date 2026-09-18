@@ -9,6 +9,7 @@ type Chat struct {
 	TelegramChatID int64
 	Title          string
 	Kind           string
+	IsForum        bool
 	TopicID        *int64
 	MutedUntil     *time.Time
 }

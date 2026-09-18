@@ -501,10 +501,9 @@ func handleAddedToChat(ctx *th.Context, deps HandlerDeps, update telego.ChatMemb
 
 	status := update.NewChatMember.MemberStatus()
 	if status == telego.MemberStatusLeft || status == telego.MemberStatusBanned {
-		// Removed from the chat: stop the deliveries now instead of letting
-		// every integration discover it one failed send at a time. The rows
-		// stay, so re-adding the bot restores the setup.
-		return deps.Store.MarkChatIntegrationsBroken(ctx, update.Chat.ID, "bot removed from chat")
+		// Removed from the chat: drop it, so it stops showing in the picker
+		// and the chats screen instead of lingering as a dead entry.
+		return deps.Store.DeleteChat(ctx, update.Chat.ID)
 	}
 	if status != telego.MemberStatusMember && status != telego.MemberStatusAdministrator {
 		return nil
@@ -512,7 +511,7 @@ func handleAddedToChat(ctx *th.Context, deps HandlerDeps, update telego.ChatMemb
 
 	lang := i18n.Normalize(update.From.LanguageCode)
 	chatID, err := deps.Store.UpsertChat(ctx, update.Chat.ID, update.Chat.Title,
-		update.Chat.Type)
+		update.Chat.Type, update.Chat.IsForum)
 	if err != nil {
 		return err
 	}
@@ -535,7 +534,7 @@ func handleAddedToChat(ctx *th.Context, deps HandlerDeps, update telego.ChatMemb
 	l := deps.Loc.Localizer(lang)
 	_, err = ctx.Bot().SendMessage(ctx, &telego.SendMessageParams{
 		ChatID:    telego.ChatID{ID: update.Chat.ID},
-		Text:      "🤖 <b>GitHub Notify</b>\n\n" + l.T("greeting.body"),
+		Text:      render.Emoji(render.EmojiBot, "🤖") + " <b>GitHub Notify</b>\n\n" + l.T("greeting.body"),
 		ParseMode: telego.ModeHTML,
 		ReplyMarkup: &telego.InlineKeyboardMarkup{
 			InlineKeyboard: [][]telego.InlineKeyboardButton{{{

@@ -108,7 +108,7 @@ func run(ctx context.Context) error {
 		_, _ = bot.SendMessage(ctx, &telego.SendMessageParams{
 			ChatID:    telego.ChatID{ID: owner},
 			ParseMode: telego.ModeHTML,
-			Text: "⚠️ <b>" + l.T("delivery.failed_title") + "</b>\n\n" +
+			Text: render.Emoji(render.EmojiWarning, "⚠️") + " <b>" + l.T("delivery.failed_title") + "</b>\n\n" +
 				l.T("delivery.failed_line", "repo", render.Escape(repo),
 					"chat", job.TelegramChatID) +
 				"\n\n<code>" + render.Escape(err.Error()) + "</code>",

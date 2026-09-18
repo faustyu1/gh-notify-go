@@ -37,7 +37,8 @@ func (h healthScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 	}
 
 	text := render.Emoji(render.EmojiHealth, "🩺") + " <b>" + l.T("health.title") + "</b>\n\n" +
-		"📂 " + render.Escape(health.RepoFullName) + " → 💬 " + render.Escape(health.ChatTitle) + "\n"
+		render.Emoji(render.EmojiFolder, "📂") + " " + render.Escape(health.RepoFullName) +
+		" → " + render.Emoji(render.EmojiChat, "💬") + " " + render.Escape(health.ChatTitle) + "\n"
 
 	if health.BrokenReason != nil {
 		text += render.Emoji(render.EmojiWarning, "⚠️") + " " +

@@ -32,7 +32,7 @@ func newIngest(t *testing.T) (*service.Ingest, *pgxpool.Pool, int64) {
 
 	userID, _, err := store.UpsertUser(ctx, 555, "en")
 	require.NoError(t, err)
-	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup")
+	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, err)
 	installID := mustInstallation(t, store, 7, "acme", "Organization", userID)
 	integrationID, err := store.CreateIntegration(ctx, chatID, installID, 42, "acme/app", userID)

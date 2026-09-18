@@ -90,13 +90,18 @@ func (d chatDetail) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		{Label: l.T("chat_detail.mute", "h", "1"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "1"}},
 		{Label: l.T("chat_detail.mute", "h", "8"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "8"}},
 		{Label: l.T("chat_detail.mute", "h", "24"), Icon: render.EmojiMuted, Screen: "a_mute", Params: ui.Params{"chat": s.Params["chat"], "hours": "24"}},
-		{Label: l.T("btn.unmute"), Icon: render.EmojiBell, Screen: "a_mute",
-			Params: ui.Params{"chat": s.Params["chat"], "hours": "0"}},
+	}
+	// Unmute is only an option while the chat is actually muted.
+	if chat.MutedUntil != nil && chat.MutedUntil.After(time.Now()) {
+		mute = append(mute, ui.Button{
+			Label: l.T("btn.unmute"), Icon: render.EmojiBell, Screen: "a_mute",
+			Params: ui.Params{"chat": s.Params["chat"], "hours": "0"},
+		})
 	}
 	rows = append(rows, mute)
-	// Only a supergroup can have topics at all, so a plain group is spared a
+	// Only a forum can have topics at all, so a plain group is spared a
 	// button that could never lead anywhere.
-	if chat.Kind == "supergroup" {
+	if chat.IsForum {
 		rows = append(rows, []ui.Button{{
 			Label:  l.T("btn.set_topic"),
 			Icon:   render.EmojiTag,

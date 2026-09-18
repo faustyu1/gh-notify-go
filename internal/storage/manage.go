@@ -23,9 +23,9 @@ type Filter struct {
 func (s *Store) ChatByTelegramID(ctx context.Context, telegramChatID int64) (domain.Chat, error) {
 	var c domain.Chat
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, telegram_chat_id, title, kind, topic_id, muted_until
+		SELECT id, telegram_chat_id, title, kind, is_forum, topic_id, muted_until
 		FROM chats WHERE telegram_chat_id = $1`, telegramChatID).
-		Scan(&c.ID, &c.TelegramChatID, &c.Title, &c.Kind, &c.TopicID, &c.MutedUntil)
+		Scan(&c.ID, &c.TelegramChatID, &c.Title, &c.Kind, &c.IsForum, &c.TopicID, &c.MutedUntil)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Chat{}, fmt.Errorf("chat %d not found", telegramChatID)
 	}
