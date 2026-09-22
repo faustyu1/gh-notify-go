@@ -15,7 +15,6 @@ type pullRequestPayload struct {
 	PullRequest struct {
 		HTMLURL      string `json:"html_url"`
 		Title        string `json:"title"`
-		Body         string `json:"body"`
 		Merged       bool   `json:"merged"`
 		Draft        bool   `json:"draft"`
 		Additions    int    `json:"additions"`
@@ -82,9 +81,6 @@ func renderPullRequest(loc *i18n.Localizer, raw json.RawMessage) (string, error)
 	}
 	b.WriteString("</blockquote>")
 
-	if body := strings.TrimSpace(p.PullRequest.Body); body != "" {
-		b.WriteString("\n" + render.Markdown(body, 500))
-	}
 	return b.String(), nil
 }
 
