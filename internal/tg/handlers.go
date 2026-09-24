@@ -443,34 +443,43 @@ func applyEventPreset(
 	return reopen(ctx, deps, userID, telegramID, lang, "events", params)
 }
 
-// startInput remembers what the next reply feeds and prompts the user with
-// ForceReply; handleReplyInput consumes it.
+// promptParam carries the prompt's message id inside the pending input, so
+// the prompt can be cleaned up whether or not the answer quotes it.
+const promptParam = "_prompt"
+
+// startInput prompts the user and remembers what their next message feeds;
+// handleReplyInput consumes it.
 func startInput(
 	ctx *th.Context, deps HandlerDeps, userID, telegramID int64,
 	lang, action string, params ui.Params, prompt string,
 ) error {
-	if err := deps.Store.SetPendingInput(ctx, userID, action, params); err != nil {
-		return err
-	}
-	_, err := ctx.Bot().SendMessage(ctx, &telego.SendMessageParams{
+	sent, err := ctx.Bot().SendMessage(ctx, &telego.SendMessageParams{
 		ChatID:      telego.ChatID{ID: telegramID},
 		Text:        prompt,
 		ReplyMarkup: &telego.ForceReply{ForceReply: true},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	pending := make(ui.Params, len(params)+1)
+	for k, v := range params {
+		pending[k] = v
+	}
+	pending[promptParam] = strconv.Itoa(sent.MessageID)
+	return deps.Store.SetPendingInput(ctx, userID, action, pending)
 }
 
-// handleReplyInput consumes the user's answer to a ForceReply prompt: applies
-// it, deletes both the prompt and the reply to keep the chat clean, and
+// handleReplyInput consumes the user's answer to a prompt: applies it,
+// deletes both the prompt and the answer to keep the chat clean, and
 // refreshes the screen the input belonged to.
+//
+// The answer does not have to quote the prompt. ForceReply is only a hint:
+// desktop clients drop it as soon as the user clicks elsewhere, and the
+// answer then arrives as a plain message. While input is pending, the next
+// private message is the answer.
 func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message) error {
-	// Only a direct reply from a private chat to our own prompt qualifies.
 	if message.Chat.Type != telego.ChatTypePrivate ||
 		message.From == nil || strings.HasPrefix(message.Text, "/") {
-		return nil
-	}
-	if message.ReplyToMessage == nil || message.ReplyToMessage.From == nil ||
-		!message.ReplyToMessage.From.IsBot {
 		return nil
 	}
 
@@ -488,6 +497,8 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 	if action == "" {
 		return nil
 	}
+	promptID := int(paramInt(params[promptParam]))
+	delete(params, promptParam)
 
 	// The prompt was authorized when it was sent, but it can sit unanswered
 	// for as long as the user likes, so the write is authorized again here.
@@ -496,7 +507,7 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		if !refused {
 			return err
 		}
-		dropPrompt(ctx, message)
+		dropPrompt(ctx, message, promptID)
 		return deny(ctx, deps, userID, message.From.ID, lang, status)
 	}
 
@@ -511,7 +522,7 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		// from where it sits, so it must not be deleted like other answers.
 		// Only the prompt goes, and the confirmation is posted below the
 		// message it is about.
-		dropMessage(ctx, message.Chat.ID, message.ReplyToMessage.MessageID)
+		dropMessage(ctx, message.Chat.ID, promptID)
 		id, err := deps.Store.CreateBroadcast(ctx, userID, message.Chat.ID, message.MessageID)
 		if err != nil {
 			return err
@@ -548,7 +559,7 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 			map[string]any{"kind": params["kind"], "pattern": reply})
 	}
 
-	dropPrompt(ctx, message)
+	dropPrompt(ctx, message, promptID)
 
 	if notice != "" {
 		_, _ = ctx.Bot().SendMessage(ctx, &telego.SendMessageParams{
@@ -574,12 +585,15 @@ func pendingScope(action string) string {
 
 // dropPrompt removes the bot's prompt and the user's answer once they have
 // served their purpose.
-func dropPrompt(ctx *th.Context, message telego.Message) {
-	dropMessage(ctx, message.Chat.ID, message.ReplyToMessage.MessageID)
+func dropPrompt(ctx *th.Context, message telego.Message, promptID int) {
+	dropMessage(ctx, message.Chat.ID, promptID)
 	dropMessage(ctx, message.Chat.ID, message.MessageID)
 }
 
 func dropMessage(ctx *th.Context, chatID int64, messageID int) {
+	if messageID == 0 {
+		return
+	}
 	_ = ctx.Bot().DeleteMessage(ctx, &telego.DeleteMessageParams{
 		ChatID: telego.ChatID{ID: chatID}, MessageID: messageID,
 	})
