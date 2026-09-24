@@ -85,31 +85,27 @@ func (a *Anchor) Show(ctx context.Context, userID, telegramID int64, view ui.Vie
 	return a.send(ctx, userID, telegramID, view, markup)
 }
 
-// Reset drops the current anchor and posts a fresh one. A user who deletes the
+// Reset posts a fresh anchor below everything else. A user who deletes the
 // anchor in a private chat only removes their own copy: the message still
 // exists for the bot, so every later edit succeeds against a message nobody can
 // see and the interface looks dead. /start therefore never edits — it starts a
-// new anchor, deleting the old one so no duplicate is left behind for users who
-// still have it.
+// new anchor. Older menus are left in place and keep working: tapping one
+// makes it the anchor again (see Adopt).
 func (a *Anchor) Reset(ctx context.Context, userID, telegramID int64, view ui.View) error {
 	markup, err := Keyboard(ctx, a.engine, userID, view)
 	if err != nil {
 		return err
 	}
-
-	messageID, err := a.nav.AnchorMessageID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if messageID != 0 {
-		// Already gone on the user's side, too old to delete, whatever: the
-		// replacement matters, the cleanup does not.
-		_ = a.api.DeleteMessage(ctx, &telego.DeleteMessageParams{
-			ChatID: telego.ChatID{ID: telegramID}, MessageID: messageID,
-		})
-	}
-
 	return a.send(ctx, userID, telegramID, view, markup)
+}
+
+// Adopt makes the message a button was tapped on the anchor, so the screen
+// it leads to opens right there — not in whichever menu was posted last.
+func (a *Anchor) Adopt(ctx context.Context, userID int64, messageID int) error {
+	if messageID == 0 {
+		return nil
+	}
+	return a.nav.SetAnchorMessageID(ctx, userID, messageID)
 }
 
 func (a *Anchor) send(

@@ -10,12 +10,24 @@ import (
 )
 
 type home struct {
-	store Store
-	loc   *i18n.Bundle
+	store   Store
+	loc     *i18n.Bundle
+	isAdmin func(telegramID int64) bool
 }
 
-func NewHome(store Store, loc *i18n.Bundle) ui.Screen {
-	return home{store: store, loc: loc}
+// NewHome builds the root screen. isAdmin decides who gets the admin panel
+// button; nil means nobody.
+func NewHome(store Store, loc *i18n.Bundle, isAdmin func(telegramID int64) bool) ui.Screen {
+	return home{store: store, loc: loc, isAdmin: isAdmin}
+}
+
+// withAdmin appends the admin panel row for the bot's owners.
+func (h home) withAdmin(view ui.View, l *i18n.Localizer, telegramID int64) ui.View {
+	if h.isAdmin != nil && h.isAdmin(telegramID) {
+		view.Rows = append(view.Rows, []ui.Button{{Label: l.T("btn.admin"),
+			Icon: render.EmojiLockClosed, Screen: "adm_home"}})
+	}
+	return view
 }
 
 func (h home) Name() string { return "home" }
@@ -30,13 +42,13 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	// A user with nothing connected gets one obvious next step instead of a
 	// menu of screens that would all be empty.
 	if accounts == 0 {
-		return ui.View{
+		return h.withAdmin(ui.View{
 			Text: render.Emoji(render.EmojiBot, "🤖") + " <b>GitHub Notify</b>\n\n" +
 				l.T("home.greeting"),
 			Rows: [][]ui.Button{
 				{{Label: l.T("btn.connect_github"), Icon: render.EmojiLink, Screen: "install"}},
 			},
-		}, nil
+		}, l, s.TelegramID), nil
 	}
 
 	text := render.Emoji(render.EmojiBot, "🤖") + " <b>GitHub Notify</b>\n\n" +
@@ -47,7 +59,7 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		render.Emoji(render.EmojiPeople, "👥") + " " + l.T("home.chats") +
 		": <b>" + strconv.Itoa(chats) + "</b>"
 
-	return ui.View{
+	return h.withAdmin(ui.View{
 		Text: text,
 		Rows: [][]ui.Button{
 			{
@@ -60,5 +72,5 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			},
 			{{Label: l.T("btn.add_to_chat"), Icon: render.EmojiPlus, Screen: "add_to_chat"}},
 		},
-	}, nil
+	}, l, s.TelegramID), nil
 }

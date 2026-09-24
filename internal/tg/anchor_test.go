@@ -180,10 +180,10 @@ func TestShowIgnoresUnchangedContent(t *testing.T) {
 	require.Empty(t, api.sent)
 }
 
-func TestResetReplacesAnchorWithoutEditing(t *testing.T) {
+func TestResetPostsNewAnchorAndKeepsOldOne(t *testing.T) {
 	// Deleting the anchor in a private chat only removes the user's copy, so
 	// an edit would still succeed against a message nobody sees. /start must
-	// post a new anchor and drop the old one.
+	// post a new anchor. The old menu stays: its buttons still work.
 	api := &fakeAnchorAPI{}
 	nav := newMemNav()
 	nav.anchor = 42
@@ -191,20 +191,23 @@ func TestResetReplacesAnchorWithoutEditing(t *testing.T) {
 
 	require.NoError(t, anchor.Reset(context.Background(), 1, 555, ui.View{Text: "hi"}))
 	require.Empty(t, api.edited)
-	require.Len(t, api.deleted, 1)
-	require.Equal(t, 42, api.deleted[0].MessageID)
+	require.Empty(t, api.deleted)
 	require.Len(t, api.sent, 1)
 	require.Equal(t, 101, nav.anchor)
 }
 
-func TestResetSkipsDeleteWhenNoAnchorExists(t *testing.T) {
+func TestAdoptedMenuIsTheOneEdited(t *testing.T) {
+	// A tap on an older menu edits that menu, not the newest one.
 	api := &fakeAnchorAPI{}
 	nav := newMemNav()
+	nav.anchor = 101
 	anchor := tg.NewAnchor(api, ui.NewEngine(nav, i18n.MustNewBundle()), nav)
 
-	require.NoError(t, anchor.Reset(context.Background(), 1, 555, ui.View{Text: "hi"}))
-	require.Empty(t, api.deleted)
-	require.Len(t, api.sent, 1)
+	require.NoError(t, anchor.Adopt(context.Background(), 1, 42))
+	require.NoError(t, anchor.Show(context.Background(), 1, 555, ui.View{Text: "hi"}))
+	require.Len(t, api.edited, 1)
+	require.Equal(t, 42, api.edited[0].MessageID)
+	require.Empty(t, api.sent)
 }
 
 func TestKeyboardUsesOpaqueCallbackKeys(t *testing.T) {

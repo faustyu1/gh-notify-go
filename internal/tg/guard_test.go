@@ -178,3 +178,17 @@ func TestGuardRefusesDisconnectForNonAdminBeforeOwnership(t *testing.T) {
 		ui.Params{"integration": "7", "chat": "-100"})
 	require.ErrorIs(t, err, service.ErrNotAdmin)
 }
+
+// The admin panel belongs to the bot's owners only, whatever chats the
+// caller administers.
+func TestGuardKeepsAdminPanelToBotOwners(t *testing.T) {
+	guard, _ := newGuard(555)
+	guard.WithAdmins([]int64{1415937101})
+
+	for _, screen := range []string{"adm_home", "adm_stats", "adm_bc_send", "adm_ref_del"} {
+		require.ErrorIs(t,
+			guard.Authorize(context.Background(), 555, screen, nil), service.ErrNotAdmin, screen)
+		require.NoError(t,
+			guard.Authorize(context.Background(), 1415937101, screen, nil), screen)
+	}
+}

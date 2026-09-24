@@ -9,15 +9,41 @@ import (
 // seeded from Telegram's language_code on the first insert only: once the
 // user has picked a language in the settings screen, later callbacks must
 // not reset it back to the client's locale.
+//
+// Every call also marks the user as seen and, since they are evidently
+// talking to the bot, as not blocking it.
 func (s *Store) UpsertUser(
 	ctx context.Context, telegramID int64, language string,
 ) (id int64, storedLanguage string, err error) {
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO users (telegram_id, language) VALUES ($1, $2)
-		ON CONFLICT (telegram_id) DO UPDATE SET telegram_id = EXCLUDED.telegram_id
+		ON CONFLICT (telegram_id) DO UPDATE
+		SET last_seen_at = now(), blocked_at = NULL
 		RETURNING id, language`, telegramID, language).Scan(&id, &storedLanguage)
 	if err != nil {
 		return 0, "", fmt.Errorf("upsert user: %w", err)
+	}
+	return id, storedLanguage, nil
+}
+
+// UpsertUserWithRef is UpsertUser for a /start that carries a referral code.
+// The link's start counter goes up whoever taps it, but only a user seen for
+// the first time is attributed to it: an existing user clicking an ad did
+// not come from that ad. An unknown code behaves like no code at all.
+func (s *Store) UpsertUserWithRef(
+	ctx context.Context, telegramID int64, language, refCode string,
+) (id int64, storedLanguage string, err error) {
+	err = s.pool.QueryRow(ctx, `
+		WITH ref AS (
+			UPDATE ref_links SET starts = starts + 1 WHERE code = $3 RETURNING id
+		)
+		INSERT INTO users (telegram_id, language, ref_link_id)
+		VALUES ($1, $2, (SELECT id FROM ref))
+		ON CONFLICT (telegram_id) DO UPDATE
+		SET last_seen_at = now(), blocked_at = NULL
+		RETURNING id, language`, telegramID, language, refCode).Scan(&id, &storedLanguage)
+	if err != nil {
+		return 0, "", fmt.Errorf("upsert user with ref: %w", err)
 	}
 	return id, storedLanguage, nil
 }

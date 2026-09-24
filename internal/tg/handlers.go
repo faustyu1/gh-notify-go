@@ -18,6 +18,7 @@ import (
 	"github.com/faustyu/gh-notify-go/internal/service"
 	"github.com/faustyu/gh-notify-go/internal/storage"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
+	"github.com/faustyu/gh-notify-go/internal/tg/ui/screens"
 )
 
 type HandlerDeps struct {
@@ -28,15 +29,23 @@ type HandlerDeps struct {
 	Guard      *Guard
 	BotUser    string
 	Loc        *i18n.Bundle
+
+	// Broadcaster, when set, is woken the moment a broadcast is confirmed
+	// instead of on its next poll.
+	Broadcaster *Broadcaster
 }
 
-// RegisterHandlers wires every Telegram update this bot reacts to: /start, a
-// callback tap, a reply to the bot's ForceReply prompt, and being added to a
-// group.
+// RegisterHandlers wires every Telegram update this bot reacts to: /start,
+// /admin, a callback tap, a reply to the bot's ForceReply prompt, and being
+// added to a group.
 func RegisterHandlers(bh *th.BotHandler, deps HandlerDeps) {
 	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
 		return handleStart(ctx, deps, message)
 	}, th.CommandEqual("start"))
+
+	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
+		return handleAdmin(ctx, deps, message)
+	}, th.CommandEqual("admin"))
 
 	// Groups are watched for one thing only: which forum topics exist. The
 	// handler runs before the reply handler because a group message is never
@@ -66,16 +75,6 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 		return nil
 	}
 
-	// The command itself is not content: every deep link tap posts a visible
-	// "/start chat_-100…" into the DM, and the whole interface is one anchor
-	// message that gets edited in place. Bots may delete incoming messages in
-	// private chats, so the command goes away and the chat stays clean.
-	if message.Chat.Type == telego.ChatTypePrivate {
-		_ = ctx.Bot().DeleteMessage(ctx, &telego.DeleteMessageParams{
-			ChatID: telego.ChatID{ID: message.Chat.ID}, MessageID: message.MessageID,
-		})
-	}
-
 	// /start inside a forum topic is also how an admin reveals that topic to
 	// the picker: Telegram delivers commands to the bot whatever its privacy
 	// setting, so this works in a group where ordinary messages do not reach
@@ -86,8 +85,22 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 		}
 	}
 
-	userID, lang, err := deps.Store.UpsertUser(ctx, message.From.ID,
-		i18n.Normalize(message.From.LanguageCode))
+	_, arg, _ := strings.Cut(message.Text, " ")
+	arg = strings.TrimSpace(arg)
+
+	// A referral deep link attributes a brand-new user to the ad that
+	// brought them; for everyone else it is a plain /start.
+	var (
+		userID int64
+		lang   = i18n.Normalize(message.From.LanguageCode)
+		err    error
+	)
+	if code, ok := strings.CutPrefix(arg, screens.RefStartPrefix); ok &&
+		message.Chat.Type == telego.ChatTypePrivate {
+		userID, lang, err = deps.Store.UpsertUserWithRef(ctx, message.From.ID, lang, code)
+	} else {
+		userID, lang, err = deps.Store.UpsertUser(ctx, message.From.ID, lang)
+	}
 	if err != nil {
 		return err
 	}
@@ -95,13 +108,11 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 	// Deep links jump straight to a screen: the group onboarding button
 	// carries chat_<id>, GitHub's setup redirect carries installed_<id>.
 	screen, params := "home", ui.Params(nil)
-	if _, arg, found := strings.Cut(message.Text, " "); found {
-		switch {
-		case strings.HasPrefix(arg, "chat_"):
-			screen, params = "chat_detail", ui.Params{"chat": strings.TrimPrefix(arg, "chat_")}
-		case strings.HasPrefix(arg, "installed_"):
-			screen, params = "accounts", nil
-		}
+	switch {
+	case strings.HasPrefix(arg, "chat_"):
+		screen, params = "chat_detail", ui.Params{"chat": strings.TrimPrefix(arg, "chat_")}
+	case strings.HasPrefix(arg, "installed_"):
+		screen, params = "accounts", nil
 	}
 
 	view, err := deps.Engine.Open(ctx, userID, message.From.ID, screen, params, lang)
@@ -119,7 +130,29 @@ func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) erro
 		}
 	}
 	// /start is the way back from a deleted anchor, so it always posts a new
-	// one rather than editing the message the user can no longer see.
+	// menu rather than editing one the user may no longer see. The command
+	// and the older menus stay: every menu in the chat keeps working.
+	return deps.Anchor.Reset(ctx, userID, message.From.ID, view)
+}
+
+// handleAdmin opens the admin panel for the bot's owners. Anyone else gets
+// the ordinary /start, so the command gives nothing away.
+func handleAdmin(ctx *th.Context, deps HandlerDeps, message telego.Message) error {
+	if message.From == nil || message.Chat.Type != telego.ChatTypePrivate {
+		return nil
+	}
+	if !deps.Guard.IsBotAdmin(message.From.ID) {
+		return handleStart(ctx, deps, message)
+	}
+	userID, lang, err := deps.Store.UpsertUser(ctx, message.From.ID,
+		i18n.Normalize(message.From.LanguageCode))
+	if err != nil {
+		return err
+	}
+	view, err := deps.Engine.Open(ctx, userID, message.From.ID, "adm_home", nil, lang)
+	if err != nil {
+		return err
+	}
 	return deps.Anchor.Reset(ctx, userID, message.From.ID, view)
 }
 
@@ -161,6 +194,14 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		i18n.Normalize(query.From.LanguageCode))
 	if err != nil {
 		return err
+	}
+
+	// Every menu /start ever posted stays usable: the one tapped is the one
+	// that changes.
+	if query.Message != nil && query.Message.GetChat().ID == query.From.ID {
+		if err := deps.Anchor.Adopt(ctx, userID, query.Message.GetMessageID()); err != nil {
+			return err
+		}
 	}
 
 	screen, params, err := deps.Engine.Resolve(ctx, userID, query.Data)
@@ -231,6 +272,43 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		audit(ctx, deps, userID, telegramChatID, "integration.filter_delete",
 			map[string]any{"filter": params["filter"]})
 		return reopen(ctx, deps, userID, query.From.ID, lang, "filters", params)
+	case "a_refresh":
+		return refresh(ctx, deps, userID, query.From.ID, lang, params)
+	case "adm_ref_new":
+		return startInput(ctx, deps, userID, query.From.ID, lang, "ref_name", nil,
+			deps.Loc.Localizer(lang).T("admin.prompt.ref_name"))
+	case "adm_ref_del":
+		if err := deps.Store.DeleteRefLink(ctx, paramInt(params["ref"])); err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "admin.ref_delete", map[string]any{"ref": params["ref"]})
+		// The deleted link's screen is on top of the stack; underneath is
+		// the list it was opened from.
+		view, err := deps.Engine.Back(ctx, userID, query.From.ID, lang)
+		if err != nil {
+			return err
+		}
+		return deps.Anchor.Show(ctx, userID, query.From.ID, view)
+	case "adm_bc_new":
+		return startInput(ctx, deps, userID, query.From.ID, lang, "broadcast", nil,
+			deps.Loc.Localizer(lang).T("admin.prompt.broadcast"))
+	case "adm_bc_send":
+		if err := deps.Store.StartBroadcast(ctx, paramInt(params["bc"])); err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "admin.broadcast_start", map[string]any{"bc": params["bc"]})
+		if deps.Broadcaster != nil {
+			deps.Broadcaster.Wake()
+		}
+		return refresh(ctx, deps, userID, query.From.ID, lang,
+			ui.Params{"screen": "adm_bc", "bc": params["bc"]})
+	case "adm_bc_cancel":
+		if err := deps.Store.CancelBroadcast(ctx, paramInt(params["bc"])); err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "admin.broadcast_cancel", map[string]any{"bc": params["bc"]})
+		return refresh(ctx, deps, userID, query.From.ID, lang,
+			ui.Params{"screen": "adm_bc", "bc": params["bc"]})
 	case "a_int_del":
 		if err := deps.Store.DeleteIntegration(ctx, paramInt(params["integration"])); err != nil {
 			return err
@@ -257,6 +335,28 @@ func reopen(
 ) error {
 	view, err := deps.Engine.Open(ctx, userID, telegramID, screen, params, lang)
 	if err != nil {
+		return err
+	}
+	return deps.Anchor.Show(ctx, userID, telegramID, view)
+}
+
+// refresh re-draws params["screen"] in place, without a new stack frame.
+// The screen is authorized inside the engine like any other.
+func refresh(
+	ctx *th.Context, deps HandlerDeps, userID, telegramID int64,
+	lang string, params ui.Params,
+) error {
+	target := make(ui.Params, len(params))
+	for k, v := range params {
+		if k != "screen" {
+			target[k] = v
+		}
+	}
+	view, err := deps.Engine.Refresh(ctx, userID, telegramID, params["screen"], target, lang)
+	if err != nil {
+		if status, refused := refusalStatus(err); refused {
+			return deny(ctx, deps, userID, telegramID, lang, status)
+		}
 		return err
 	}
 	return deps.Anchor.Show(ctx, userID, telegramID, view)
@@ -406,6 +506,34 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		notice string
 	)
 	switch action {
+	case "broadcast":
+		// The admin's message is the broadcast: it is copied to everyone
+		// from where it sits, so it must not be deleted like other answers.
+		// Only the prompt goes, and the confirmation is posted below the
+		// message it is about.
+		dropMessage(ctx, message.Chat.ID, message.ReplyToMessage.MessageID)
+		id, err := deps.Store.CreateBroadcast(ctx, userID, message.Chat.ID, message.MessageID)
+		if err != nil {
+			return err
+		}
+		view, err := deps.Engine.Open(ctx, userID, message.From.ID, "adm_bc",
+			ui.Params{"bc": strconv.FormatInt(id, 10)}, lang)
+		if err != nil {
+			return err
+		}
+		return deps.Anchor.Reset(ctx, userID, message.From.ID, view)
+	case "ref_name":
+		screen = "adm_refs"
+		if reply == "" || len([]rune(reply)) > 64 {
+			notice = l.T("admin.prompt.ref_name_invalid")
+			break
+		}
+		link, err := deps.Store.CreateRefLink(ctx, userID, reply)
+		if err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "admin.ref_create", map[string]any{"ref": link.ID})
+		screen, params = "adm_ref", ui.Params{"ref": strconv.FormatInt(link.ID, 10)}
 	case "filter":
 		screen = "filters"
 		if reply == "" || len(reply) > 100 {
@@ -433,8 +561,13 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 // pendingScope names the action a ForceReply answer completes, so the same
 // authorization table covers the prompt and the write it produces.
 func pendingScope(action string) string {
-	if action == "filter" {
+	switch action {
+	case "filter":
 		return "a_filter_add"
+	case "ref_name":
+		return "adm_ref_new"
+	case "broadcast":
+		return "adm_bc_new"
 	}
 	return action
 }
@@ -442,11 +575,13 @@ func pendingScope(action string) string {
 // dropPrompt removes the bot's prompt and the user's answer once they have
 // served their purpose.
 func dropPrompt(ctx *th.Context, message telego.Message) {
+	dropMessage(ctx, message.Chat.ID, message.ReplyToMessage.MessageID)
+	dropMessage(ctx, message.Chat.ID, message.MessageID)
+}
+
+func dropMessage(ctx *th.Context, chatID int64, messageID int) {
 	_ = ctx.Bot().DeleteMessage(ctx, &telego.DeleteMessageParams{
-		ChatID: telego.ChatID{ID: message.Chat.ID}, MessageID: message.ReplyToMessage.MessageID,
-	})
-	_ = ctx.Bot().DeleteMessage(ctx, &telego.DeleteMessageParams{
-		ChatID: telego.ChatID{ID: message.Chat.ID}, MessageID: message.MessageID,
+		ChatID: telego.ChatID{ID: chatID}, MessageID: messageID,
 	})
 }
 

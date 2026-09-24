@@ -3,6 +3,7 @@ package tg
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/service"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
@@ -57,12 +58,31 @@ type ChatLookup interface {
 // and the /start chat_<id> deep link, which a user can type by hand for any
 // chat id at all.
 type Guard struct {
-	roles service.ChatRoles
-	store ChatLookup
+	roles  service.ChatRoles
+	store  ChatLookup
+	admins map[int64]bool
 }
 
 func NewGuard(roles service.ChatRoles, store ChatLookup) *Guard {
 	return &Guard{roles: roles, store: store}
+}
+
+// WithAdmins names the bot owners. Every screen and action whose name
+// starts with adminPrefix is theirs alone; without this call nobody has them.
+func (g *Guard) WithAdmins(ids []int64) *Guard {
+	g.admins = make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		g.admins[id] = true
+	}
+	return g
+}
+
+// adminPrefix marks the admin panel's screens and actions.
+const adminPrefix = "adm_"
+
+// IsBotAdmin reports whether the user owns the bot.
+func (g *Guard) IsBotAdmin(telegramUserID int64) bool {
+	return g.admins[telegramUserID]
 }
 
 // Authorize returns nil when the screen or action is allowed, and
@@ -72,6 +92,13 @@ func NewGuard(roles service.ChatRoles, store ChatLookup) *Guard {
 func (g *Guard) Authorize(
 	ctx context.Context, telegramUserID int64, screen string, params ui.Params,
 ) error {
+	if strings.HasPrefix(screen, adminPrefix) {
+		if !g.IsBotAdmin(telegramUserID) {
+			return service.ErrNotAdmin
+		}
+		return nil
+	}
+
 	sc, scoped := chatScopes[screen]
 	if !scoped {
 		return nil

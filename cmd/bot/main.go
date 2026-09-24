@@ -118,12 +118,12 @@ func run(ctx context.Context) error {
 	// One admin checker for the whole bot: the connect flow and the screen
 	// guard share its cache, so a burst of taps stays one Telegram call.
 	admins := tg.NewAdminChecker(bot, time.Minute)
-	guard := tg.NewGuard(admins, store)
+	guard := tg.NewGuard(admins, store).WithAdmins(cfg.Bot.AdminIDs)
 
 	nav := ui.NewPostgresNav(store.Pool())
 	engine := ui.NewEngine(nav, loc).WithGuard(guard.Screen())
 	engine.Register(
-		screens.NewHome(store, loc),
+		screens.NewHome(store, loc, guard.IsBotAdmin),
 		screens.NewInstall(cfg.GitHub.Slug, cfg.HTTP.PublicURL, store, loc),
 		screens.NewAccounts(store, loc),
 		screens.NewRepos(store, github, 10, loc),
@@ -140,7 +140,14 @@ func run(ctx context.Context) error {
 		screens.NewHealth(store, loc),
 		screens.NewStatus(store, loc),
 		screens.NewSettings(cfg.Limits.ChatPerMinute, loc),
+		screens.NewAdminHome(store, loc),
+		screens.NewAdminStats(store, loc),
+		screens.NewAdminRefs(store, loc),
+		screens.NewAdminRef(store, cfg.Bot.Username, loc),
+		screens.NewAdminBroadcasts(store, loc),
+		screens.NewAdminBroadcast(store, loc),
 	)
+	broadcaster := tg.NewBroadcaster(bot, store, loc)
 
 	integrator := service.NewIntegrator(store, admins)
 	ingest := service.NewIngest(store, queue)
@@ -194,6 +201,8 @@ func run(ctx context.Context) error {
 		Guard:      guard,
 		BotUser:    cfg.Bot.Username,
 		Loc:        loc,
+
+		Broadcaster: broadcaster,
 	})
 
 	var wg sync.WaitGroup
@@ -227,6 +236,14 @@ func run(ctx context.Context) error {
 		defer wg.Done()
 		janitor.New(store.Pool(), janitor.DefaultRetention(), time.Now).
 			Run(ctx, time.Hour)
+	}()
+
+	// One broadcaster: a broadcast is a single ordered walk over the users
+	// table, and two would message everyone twice.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		broadcaster.Run(ctx, 5*time.Second)
 	}()
 
 	wg.Add(1)

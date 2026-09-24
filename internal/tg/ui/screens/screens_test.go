@@ -115,7 +115,7 @@ func labels(view ui.View) []string {
 }
 
 func TestHomeWithNoInstallationOffersInstall(t *testing.T) {
-	screen := screens.NewHome(&fakeStore{}, loc)
+	screen := screens.NewHome(&fakeStore{}, loc, nil)
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
 	require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestHomeWithNoInstallationOffersInstall(t *testing.T) {
 }
 
 func TestHomeRendersInUserLanguage(t *testing.T) {
-	screen := screens.NewHome(&fakeStore{}, loc)
+	screen := screens.NewHome(&fakeStore{}, loc, nil)
 
 	ru, err := screen.Render(context.Background(),
 		ui.Session{UserID: 1, Depth: 1, Lang: "ru"})
@@ -139,7 +139,7 @@ func TestHomeRendersInUserLanguage(t *testing.T) {
 }
 
 func TestHomeWithInstallationShowsCounts(t *testing.T) {
-	screen := screens.NewHome(&fakeStore{accounts: 2, repos: 5, chats: 3}, loc)
+	screen := screens.NewHome(&fakeStore{accounts: 2, repos: 5, chats: 3}, loc, nil)
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
 	require.NoError(t, err)

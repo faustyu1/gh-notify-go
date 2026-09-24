@@ -60,6 +60,7 @@ Failing that, the picker can create a topic itself, which needs the
 | `PUBLIC_URL` | external address the reverse proxy points at |
 | `SECRET_KEY` | AES-GCM key encrypting installation tokens — 32 random bytes in base64, generate with `openssl rand -base64 32` |
 | `CHAT_PER_MINUTE`, `WORKERS` | delivery pace and worker count |
+| `ADMIN_IDS` | comma-separated Telegram user ids that get the admin panel (`/admin`): referral links, broadcasts, anonymous statistics |
 
 Configuration is environment variables only. The full list with defaults lives
 in `.env.example`: copy it to `.env` and the binary reads it at startup. Real

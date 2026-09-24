@@ -14,7 +14,14 @@ import (
 type Bot struct {
 	Token    string
 	Username string
+
+	// AdminIDs are the Telegram user ids that see the admin panel: referral
+	// links, broadcasts, bot-wide statistics.
+	AdminIDs []int64
 }
+
+// defaultAdminID is the bot owner, used when ADMIN_IDS is not set.
+const defaultAdminID = 1415937101
 
 type Database struct {
 	URL string
@@ -80,6 +87,17 @@ func applyEnv(cfg *Config) error {
 	if cfg.Limits.Workers, err = envInt("WORKERS"); err != nil {
 		return err
 	}
+	for _, raw := range strings.Split(os.Getenv("ADMIN_IDS"), ",") {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return fmt.Errorf("ADMIN_IDS: %w", err)
+		}
+		cfg.Bot.AdminIDs = append(cfg.Bot.AdminIDs, id)
+	}
 	return nil
 }
 
@@ -109,6 +127,9 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.HTTP.Addr == "" {
 		cfg.HTTP.Addr = ":8080"
+	}
+	if len(cfg.Bot.AdminIDs) == 0 {
+		cfg.Bot.AdminIDs = []int64{defaultAdminID}
 	}
 }
 

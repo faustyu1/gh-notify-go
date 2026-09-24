@@ -106,6 +106,21 @@ func (e *Engine) Open(
 	return e.render(ctx, userID, telegramID, screen, params, lang)
 }
 
+// Refresh renders a screen without touching the navigation stack: a
+// "refresh" or an in-place confirmation re-draws what is already on top,
+// and pushing it again would make ◁ Назад land on the same screen.
+func (e *Engine) Refresh(
+	ctx context.Context, userID, telegramID int64, screen string, params Params, lang string,
+) (View, error) {
+	if _, ok := e.screens[screen]; !ok {
+		return View{}, fmt.Errorf("%w: %s", ErrUnknownScreen, screen)
+	}
+	if err := e.authorize(ctx, telegramID, screen, params); err != nil {
+		return View{}, err
+	}
+	return e.render(ctx, userID, telegramID, screen, params, lang)
+}
+
 // Back pops one frame and renders what is underneath.
 func (e *Engine) Back(
 	ctx context.Context, userID, telegramID int64, lang string,
