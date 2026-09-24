@@ -64,6 +64,12 @@ func TestIssueCommentGolden(t *testing.T) {
 	assertGolden(t, "issue_comment", "issue_comment")
 }
 
+// A comment on a pull request's conversation arrives as issue_comment and
+// must still say "pull request".
+func TestIssueCommentOnPullRequestGolden(t *testing.T) {
+	assertGolden(t, "issue_comment", "issue_comment_pr")
+}
+
 func TestPullRequestReviewGolden(t *testing.T) {
 	assertGolden(t, "pull_request_review", "pull_request_review")
 }

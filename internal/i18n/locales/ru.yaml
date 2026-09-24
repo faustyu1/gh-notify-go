@@ -192,6 +192,7 @@ ev:
 
   issue_comment:
     line: "{user} прокомментировал issue {link}"
+    pr_line: "{user} прокомментировал пул-реквест {link}"
 
   pull_request_review:
     approved: "{user} апрувнул пул-реквест {link}"

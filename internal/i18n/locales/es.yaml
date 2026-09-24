@@ -189,6 +189,7 @@ ev:
 
   issue_comment:
     line: "{user} comentó en la issue {link}"
+    pr_line: "{user} comentó en el pull request {link}"
 
   pull_request_review:
     approved: "{user} aprobó el pull request {link}"

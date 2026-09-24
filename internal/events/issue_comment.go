@@ -15,6 +15,9 @@ type issueCommentPayload struct {
 		Number  int    `json:"number"`
 		HTMLURL string `json:"html_url"`
 		Title   string `json:"title"`
+		// Present when the "issue" is a pull request: GitHub delivers PR
+		// conversation comments as issue_comment too.
+		PullRequest *struct{} `json:"pull_request"`
 	} `json:"issue"`
 	Comment struct {
 		Body string `json:"body"`
@@ -43,7 +46,11 @@ func renderIssueComment(loc *i18n.Localizer, raw json.RawMessage) (string, error
 	b.WriteString(" <b>")
 	b.WriteString(render.Escape(p.Repo.FullName))
 	b.WriteString("</b>\n")
-	b.WriteString(loc.T("ev.issue_comment.line",
+	key := "ev.issue_comment.line"
+	if p.Issue.PullRequest != nil {
+		key = "ev.issue_comment.pr_line"
+	}
+	b.WriteString(loc.T(key,
 		"user", render.Link(p.Sender.HTMLURL, p.Sender.Login),
 		"link", render.Link(p.Issue.HTMLURL, fmt.Sprintf("#%d «%s»",
 			p.Issue.Number, render.Truncate(p.Issue.Title, 60))),

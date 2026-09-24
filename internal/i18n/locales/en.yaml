@@ -200,6 +200,7 @@ ev:
 
   issue_comment:
     line: "{user} commented on issue {link}"
+    pr_line: "{user} commented on pull request {link}"
 
   pull_request_review:
     approved: "{user} approved pull request {link}"
