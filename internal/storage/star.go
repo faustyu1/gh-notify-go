@@ -64,10 +64,14 @@ func (s *Store) SetPendingInput(
 // TakePendingInput returns and clears the user's pending input, if any.
 func (s *Store) TakePendingInput(ctx context.Context, userID int64) (string, ui.Params, error) {
 	var raw []byte
+	// RETURNING sees the row after the update, when pending is already
+	// NULL; the old value has to be read in the same statement first.
 	err := s.pool.QueryRow(ctx, `
-		UPDATE ui_nav SET pending = NULL
-		WHERE user_id = $1 AND pending IS NOT NULL
-		RETURNING pending`, userID).Scan(&raw)
+		UPDATE ui_nav n SET pending = NULL
+		FROM (SELECT user_id, pending FROM ui_nav
+		      WHERE user_id = $1 AND pending IS NOT NULL FOR UPDATE) old
+		WHERE n.user_id = old.user_id
+		RETURNING old.pending`, userID).Scan(&raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil, nil
 	}

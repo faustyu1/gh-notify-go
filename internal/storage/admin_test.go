@@ -132,3 +132,22 @@ func TestCancelStopsRunningBroadcast(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, finished)
 }
+
+func TestPendingInputRoundTrips(t *testing.T) {
+	ctx := context.Background()
+	store := newStore(t)
+
+	user, _, err := store.UpsertUser(ctx, 20, "en")
+	require.NoError(t, err)
+	require.NoError(t, store.SetPendingInput(ctx, user, "ref_name", map[string]string{"_prompt": "7"}))
+
+	action, params, err := store.TakePendingInput(ctx, user)
+	require.NoError(t, err)
+	require.Equal(t, "ref_name", action)
+	require.Equal(t, "7", params["_prompt"])
+
+	// Taken once: a second message is not an answer any more.
+	action, _, err = store.TakePendingInput(ctx, user)
+	require.NoError(t, err)
+	require.Empty(t, action)
+}
