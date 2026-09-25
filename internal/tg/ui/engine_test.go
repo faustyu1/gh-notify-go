@@ -232,3 +232,37 @@ func TestGuardIsRecheckedOnBack(t *testing.T) {
 	_, err = engine.Back(ctx, userID, 555, "en")
 	require.ErrorIs(t, err, errForbidden)
 }
+
+func TestForgetDropsEveryFrameOfTheDeletedThing(t *testing.T) {
+	ctx := context.Background()
+	engine, _, userID := newEngine(t)
+
+	_, err := engine.Open(ctx, userID, 555, "home", nil, "en")
+	require.NoError(t, err)
+	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "7"}, "en")
+	require.NoError(t, err)
+	_, err = engine.Open(ctx, userID, 555, "repo_detail", ui.Params{"id": "31"}, "en")
+	require.NoError(t, err)
+	_, err = engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "31"}, "en")
+	require.NoError(t, err)
+
+	view, err := engine.Forget(ctx, userID, 555, "id", "31", "en")
+	require.NoError(t, err)
+	require.Equal(t, "repos:7", view.Text)
+
+	view, err = engine.Back(ctx, userID, 555, "en")
+	require.NoError(t, err)
+	require.Equal(t, "home:", view.Text)
+}
+
+func TestForgetOfTheWholeStackLandsHome(t *testing.T) {
+	ctx := context.Background()
+	engine, _, userID := newEngine(t)
+
+	_, err := engine.Open(ctx, userID, 555, "repos", ui.Params{"id": "31"}, "en")
+	require.NoError(t, err)
+
+	view, err := engine.Forget(ctx, userID, 555, "id", "31", "en")
+	require.NoError(t, err)
+	require.Equal(t, "home:", view.Text)
+}

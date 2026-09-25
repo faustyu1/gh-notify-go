@@ -68,6 +68,11 @@ func (m *memNav) Pop(context.Context, int64) (string, ui.Params, error) {
 	return "home", nil, nil
 }
 func (m *memNav) Depth(context.Context, int64) (int, error) { return 1, nil }
+func (m *memNav) Prune(
+	context.Context, int64, func(string, ui.Params) bool,
+) (string, ui.Params, error) {
+	return "home", nil, nil
+}
 func (m *memNav) PutAction(_ context.Context, _ int64, key, screen string, _ ui.Params) error {
 	m.actions[key] = [2]string{screen, ""}
 	return nil

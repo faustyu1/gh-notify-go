@@ -335,7 +335,14 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		}
 		audit(ctx, deps, userID, 0, "connection.delete",
 			map[string]any{"installation": params["installation"]})
-		return reopen(ctx, deps, userID, query.From.ID, lang, "accounts", nil)
+		// Every screen of the deleted connection goes too; what is left on
+		// top is wherever the user came from, usually the accounts list.
+		view, err := deps.Engine.Forget(ctx, userID, query.From.ID,
+			"installation", params["installation"], lang)
+		if err != nil {
+			return err
+		}
+		return deps.Anchor.Show(ctx, userID, query.From.ID, view)
 	case "a_int_del":
 		if err := deps.Store.DeleteIntegration(ctx, paramInt(params["integration"])); err != nil {
 			return err
