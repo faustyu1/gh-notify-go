@@ -1,0 +1,90 @@
+# Runs on every push and pull request. A red check means the change must not
+# reach the server: formatting, static analysis, the full test suite against
+# a real Postgres, known vulnerabilities in the shipped binary, and the
+# production image build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: gh
+          POSTGRES_PASSWORD: gh
+          POSTGRES_DB: ghnotify
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gh -d ghnotify"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l cmd internal)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 ./...
+
+      - name: build
+        run: go build ./...
+
+      # Every test gets its own database inside this one server, the same
+      # way `make test` runs the suite locally.
+      - name: test
+        env:
+          TEST_DATABASE_URL: postgres://gh:gh@127.0.0.1:5432/ghnotify?sslmode=disable
+        run: go test -race -count=1 ./...
+
+      # Only the shipped binary: test-only dependencies (testcontainers,
+      # docker) never reach the server.
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./cmd/...
+
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: build production image
+        run: docker build -f deploy/Dockerfile -t gh-notify-go:ci .
