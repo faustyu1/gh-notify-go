@@ -37,13 +37,13 @@ func (s *Store) IntegrationsForRepo(
 		repoGitHubID, githubInstallationID)
 }
 
-// IntegrationsForGitLabProject is the GitLab side of IntegrationsForRepo. A
-// GitLab webhook is identified by its token, which resolves straight to the
-// internal installation id.
-func (s *Store) IntegrationsForGitLabProject(
+// IntegrationsForProject is the webhook-connection side of
+// IntegrationsForRepo. A delivery has already been authenticated to its
+// connection, which is the internal installation id.
+func (s *Store) IntegrationsForProject(
 	ctx context.Context, installationID, projectID int64,
 ) ([]domain.Integration, error) {
-	return s.liveIntegrations(ctx, `ins.id = $2 AND ins.provider = 'gitlab'`,
+	return s.liveIntegrations(ctx, `ins.id = $2 AND ins.provider <> 'github'`,
 		projectID, installationID)
 }
 

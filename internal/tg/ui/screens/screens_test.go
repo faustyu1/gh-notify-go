@@ -592,112 +592,158 @@ func (f fakeHealth) HealthForIntegration(context.Context, int64) (storage.Integr
 	return h, nil
 }
 
-type fakeGitLab struct {
-	projects []storage.GitLabProject
+type fakeForge struct {
+	projects []storage.Project
 	token    string
 	askedBy  int64
 }
 
-func (f *fakeGitLab) GitLabProjects(_ context.Context, _, userID int64) ([]storage.GitLabProject, error) {
+func (f *fakeForge) Projects(_ context.Context, _, userID int64) ([]storage.Project, error) {
 	f.askedBy = userID
 	return f.projects, nil
 }
 
-func (f *fakeGitLab) GitLabWebhookToken(_ context.Context, _, userID int64) (string, error) {
+func (f *fakeForge) WebhookToken(_ context.Context, _, userID int64) (string, error) {
 	f.askedBy = userID
 	return f.token, nil
 }
 
-func TestHomeWithNoInstallationOffersGitLab(t *testing.T) {
+func TestHomeWithNoInstallationOffersOtherPlatforms(t *testing.T) {
 	view, err := screens.NewHome(&fakeStore{}, loc, nil).
 		Render(context.Background(), ui.Session{UserID: 1, Depth: 1})
 	require.NoError(t, err)
-	require.Contains(t, labels(view), "Connect GitLab")
+	require.Contains(t, labels(view), "Connect GitHub")
+	require.Contains(t, labels(view), "Other platforms")
 }
 
-func TestAccountsRoutesGitLabToProjects(t *testing.T) {
+func TestConnectOffersEveryWebhookProvider(t *testing.T) {
+	view, err := screens.NewConnect(loc).
+		Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
+	require.NoError(t, err)
+	require.Equal(t, []string{"GitLab", "Gitea", "Forgejo", "GitVerse"}, labels(view))
+	for _, row := range view.Rows {
+		require.Equal(t, "a_forge_new", row[0].Screen)
+		require.NotEmpty(t, row[0].Params["provider"])
+	}
+}
+
+func TestAccountsRoutesWebhookConnectionsToProjects(t *testing.T) {
 	screen := screens.NewAccounts(&fakeStore{installations: []domain.Installation{
 		{ID: 1, AccountLogin: "acme", AccountType: "Organization", Provider: domain.ProviderGitHub},
 		{ID: 2, AccountLogin: "mike", AccountType: "gitlab", Provider: domain.ProviderGitLab},
 		{ID: 3, AccountType: "gitlab", Provider: domain.ProviderGitLab},
+		{ID: 4, AccountLogin: "tea", AccountType: "gitea", Provider: "gitea"},
 	}}, loc)
 
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2})
 	require.NoError(t, err)
 	require.Contains(t, labels(view), "GitLab · mike")
 	require.Contains(t, labels(view), "GitLab", "a connection without events yet is still listed")
-	require.Contains(t, labels(view), "Connect GitLab")
+	require.Contains(t, labels(view), "Gitea · tea")
+	require.Contains(t, labels(view), "Other platforms")
 
 	for _, row := range view.Rows {
 		for _, b := range row {
-			if b.Label == "GitLab · mike" {
-				require.Equal(t, "gl_projects", b.Screen)
+			switch b.Label {
+			case "GitLab · mike":
+				require.Equal(t, "forge_projects", b.Screen)
 				require.Equal(t, "2", b.Params["installation"])
-			}
-			if b.Label == "acme" {
+			case "Gitea · tea":
+				require.Equal(t, "forge_projects", b.Screen)
+			case "acme":
 				require.Equal(t, "repos", b.Screen)
 			}
 		}
 	}
 }
 
-func TestGitLabHookShowsURLAndOwnersToken(t *testing.T) {
-	gl := &fakeGitLab{token: "deadbeef"}
-	screen := screens.NewGitLabHook("https://bot.example.com/", gl, loc)
+func TestHookSetupShowsURLAndOwnersToken(t *testing.T) {
+	for _, tc := range []struct {
+		provider, url, secretLabel string
+	}{
+		// GitLab and GitVerse name their connection by the token; Gitea signs
+		// and so needs the connection in the URL.
+		{domain.ProviderGitLab, "https://bot.example.com/hook/gitlab", "Secret token"},
+		{"gitea", "https://bot.example.com/hook/gitea/5", "Secret"},
+		{"forgejo", "https://bot.example.com/hook/forgejo/5", "Forgejo"},
+		{"gitverse", "https://bot.example.com/hook/gitverse", "Authorization"},
+	} {
+		t.Run(tc.provider, func(t *testing.T) {
+			fg := &fakeForge{token: "deadbeef"}
+			screen := screens.NewHookSetup("https://bot.example.com/", &fakeStore{
+				installation: domain.Installation{ID: 5, Provider: tc.provider}}, fg, loc)
 
-	view, err := screen.Render(context.Background(), ui.Session{UserID: 42, Depth: 2,
-		Params: ui.Params{"installation": "5"}})
-	require.NoError(t, err)
-	require.Contains(t, view.Text, "https://bot.example.com/gl/webhook")
-	require.Contains(t, view.Text, "deadbeef")
-	require.Equal(t, int64(42), gl.askedBy, "the token is read as the session's user")
-	require.Contains(t, labels(view), "Delete connection")
+			view, err := screen.Render(context.Background(), ui.Session{UserID: 42, Depth: 2,
+				Params: ui.Params{"installation": "5"}})
+			require.NoError(t, err)
+			require.Contains(t, view.Text, "<code>"+tc.url+"</code>")
+			require.Contains(t, view.Text, "deadbeef")
+			require.Contains(t, view.Text, tc.secretLabel)
+			require.Equal(t, int64(42), fg.askedBy, "the token is read as the session's user")
+			require.Contains(t, labels(view), "Delete connection")
+		})
+	}
 }
 
-func TestGitLabProjectsCarryProviderToRepoDetail(t *testing.T) {
-	gl := &fakeGitLab{projects: []storage.GitLabProject{
-		{ID: 15, Path: "mike/diaspora", WebURL: "https://gitlab.example.com/mike/diaspora"},
-	}}
-	screen := screens.NewGitLabProjects(&fakeStore{installation: domain.Installation{
-		ID: 5, AccountLogin: "mike", Provider: domain.ProviderGitLab}}, gl, 10, loc)
+// Menus sent before the rename still open the same screens.
+func TestOldGitLabScreenNamesStillResolve(t *testing.T) {
+	screen := screens.Alias("gl_hook", screens.NewHookSetup("https://bot.example.com", &fakeStore{
+		installation: domain.Installation{ID: 5, Provider: domain.ProviderGitLab}}, &fakeForge{}, loc))
+	require.Equal(t, "gl_hook", screen.Name())
+	_, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 2,
+		Params: ui.Params{"installation": "5"}})
+	require.NoError(t, err)
+}
 
+func TestForgeProjectsCarryProviderToRepoDetail(t *testing.T) {
+	for _, tc := range []struct{ provider, url, open string }{
+		{domain.ProviderGitLab, "https://gitlab.example.com/mike/diaspora", "Open on GitLab"},
+		{"gitea", "https://tea.example.com/mike/diaspora", "Open on Gitea"},
+	} {
+		fg := &fakeForge{projects: []storage.Project{{ID: 15, Path: "mike/diaspora", WebURL: tc.url}}}
+		screen := screens.NewForgeProjects(&fakeStore{installation: domain.Installation{
+			ID: 5, AccountLogin: "mike", Provider: tc.provider}}, fg, 10, loc)
+
+		view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 3,
+			Params: ui.Params{"installation": "5"}})
+		require.NoError(t, err)
+
+		var project *ui.Button
+		for _, row := range view.Rows {
+			for _, b := range row {
+				if b.Screen == "repo_detail" {
+					project = &b
+				}
+			}
+		}
+		require.NotNil(t, project)
+		require.Equal(t, "15", project.Params["repo"])
+		require.Equal(t, tc.provider, project.Params["provider"])
+
+		detail, err := screens.NewRepoDetail(&fakeStore{}, loc).Render(context.Background(),
+			ui.Session{UserID: 1, Depth: 4, Params: project.Params})
+		require.NoError(t, err)
+		var open string
+		for _, row := range detail.Rows {
+			for _, b := range row {
+				if b.URL != "" {
+					open = b.URL
+				}
+			}
+		}
+		require.Equal(t, tc.url, open)
+		require.Contains(t, labels(detail), tc.open)
+	}
+}
+
+func TestForgeProjectsEmptyExplainsTheTestDelivery(t *testing.T) {
+	screen := screens.NewForgeProjects(&fakeStore{installation: domain.Installation{
+		Provider: "forgejo"}}, &fakeForge{}, 10, loc)
 	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 3,
 		Params: ui.Params{"installation": "5"}})
 	require.NoError(t, err)
-
-	var project *ui.Button
-	for _, row := range view.Rows {
-		for _, b := range row {
-			if b.Screen == "repo_detail" {
-				project = &b
-			}
-		}
-	}
-	require.NotNil(t, project)
-	require.Equal(t, "15", project.Params["repo"])
-	require.Equal(t, "gitlab", project.Params["provider"])
-
-	detail, err := screens.NewRepoDetail(&fakeStore{}, loc).Render(context.Background(),
-		ui.Session{UserID: 1, Depth: 4, Params: project.Params})
-	require.NoError(t, err)
-	var open string
-	for _, row := range detail.Rows {
-		for _, b := range row {
-			if b.URL != "" {
-				open = b.URL
-			}
-		}
-	}
-	require.Equal(t, "https://gitlab.example.com/mike/diaspora", open)
-	require.Contains(t, labels(detail), "Open on GitLab")
-}
-
-func TestGitLabProjectsEmptyExplainsTheTestButton(t *testing.T) {
-	screen := screens.NewGitLabProjects(&fakeStore{}, &fakeGitLab{}, 10, loc)
-	view, err := screen.Render(context.Background(), ui.Session{UserID: 1, Depth: 3,
-		Params: ui.Params{"installation": "5"}})
-	require.NoError(t, err)
-	require.Contains(t, view.Text, "Test")
+	require.Contains(t, view.Text, "No events from Forgejo")
+	require.Contains(t, view.Text, "test delivery")
 	require.Contains(t, labels(view), "Webhook settings")
 }
 
@@ -718,6 +764,25 @@ func TestEventsScreenForGitLabOffersOnlyGitLabKinds(t *testing.T) {
 		for _, b := range row {
 			if b.Label == "merge_request" {
 				require.Equal(t, "gl_merge_request", b.Params["kind"])
+			}
+		}
+	}
+}
+
+func TestEventsScreenForGiteaOffersGiteaKinds(t *testing.T) {
+	view, err := screens.NewEvents(&fakeStore{provider: "gitverse"}, loc).
+		Render(context.Background(), ui.Session{UserID: 1, Depth: 2,
+			Params: ui.Params{"integration": "5", "name": "mike/tea"}})
+	require.NoError(t, err)
+
+	all := labels(view)
+	require.Contains(t, all, "pull_request")
+	require.NotContains(t, all, "merge_request")
+	require.NotContains(t, all, "workflow_run")
+	for _, row := range view.Rows {
+		for _, b := range row {
+			if b.Label == "pull_request" {
+				require.Equal(t, "gt_pull_request", b.Params["kind"])
 			}
 		}
 	}

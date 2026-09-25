@@ -168,3 +168,24 @@ func TestGitLabGoldens(t *testing.T) {
 		})
 	}
 }
+
+func TestGiteaGoldens(t *testing.T) {
+	for _, tc := range []struct {
+		kind events.Kind
+		name string
+	}{
+		{"gt_push", "gt_push"},
+		{"gt_create", "gt_create"},
+		{"gt_delete", "gt_delete"},
+		{"gt_pull_request", "gt_pull_request"},
+		{"gt_pull_request_review", "gt_pull_request_review"},
+		{"gt_issues", "gt_issues"},
+		{"gt_issue_comment", "gt_issue_comment_pr"},
+		{"gt_release", "gt_release"},
+		{"gt_wiki", "gt_wiki"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assertGolden(t, tc.kind, tc.name)
+		})
+	}
+}
