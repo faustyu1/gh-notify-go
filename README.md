@@ -1,14 +1,15 @@
 # gh-notify-go
 
-A Telegram bot that delivers GitHub and GitLab repository events to group
+A Telegram bot that delivers GitHub, GitLab, Gitea, Forgejo and GitVerse
+repository events to group
 chats in real time. Everything is driven by inline keyboards in a private chat with the bot;
 `/start` is the only command.
 
 A live instance runs at [@g0thubbot](https://t.me/g0thubbot) — send it `/start`
 to see the interface before deploying your own.
 
-Architecture: a single Go binary. The GitHub webhook verifies the HMAC (a
-GitLab webhook, its secret token),
+Architecture: a single Go binary. The GitHub webhook verifies the HMAC (other
+hosts: their per-connection secret, see `internal/forge`),
 deduplicates by delivery id, finds the matching integrations, and writes rows
 into a Postgres outbox. A pool of workers drains the outbox, renders each event
 as Telegram HTML, and sends it with retries and backoff.
@@ -23,6 +24,10 @@ as Telegram HTML, and sends it with retries and backoff.
 GitLab projects get 9 kinds of their own: `push`, `tag_push`,
 `merge_request`, `issue`, `note` (comments on merge requests, issues, commits
 and snippets), `pipeline`, `release`, `wiki_page`, `deployment`.
+
+Gitea, Forgejo and GitVerse repositories share one payload format and get 9
+kinds: `push`, `create`, `delete`, `pull_request`, `pull_request_review`,
+`issues`, `issue_comment`, `release`, `wiki`.
 
 Every kind is toggled per integration, plus three presets: everything, the
 important ones, nothing. Filters match on author, branch, label, and action.
@@ -71,13 +76,26 @@ Configuration is environment variables only. The full list with defaults lives
 in `.env.example`: copy it to `.env` and the binary reads it at startup. Real
 environment variables always win over the file.
 
-## Connecting GitLab
+## Connecting GitLab, Gitea, Forgejo and GitVerse
 
-GitLab has no App to install, so a GitLab connection is a webhook. **Connect
-GitLab** in the bot mints a secret token and shows what to paste into the
-project's (or group's) **Settings → Webhooks**:
+These hosts have no App to install, so a connection is a webhook. **Other
+platforms** in the bot lists them; picking one mints a secret and shows what to
+paste into the repository's (or group's) webhook settings. How the secret is
+used differs per host:
 
-- URL: `https://<host>/gl/webhook`
+| Host | Webhook URL | Secret goes into |
+| --- | --- | --- |
+| GitLab | `https://<host>/hook/gitlab` (the old `/gl/webhook` still works) | Secret token |
+| Gitea | `https://<host>/hook/gitea/<connection>` | Secret (HMAC signature) |
+| Forgejo, Codeberg | `https://<host>/hook/forgejo/<connection>` | Secret (HMAC signature) |
+| GitVerse | `https://<host>/hook/gitverse` | Authorization header |
+
+GitVerse is built on Gitea and is parsed as Gitea; it only reaches ports 80
+and 443, so `PUBLIC_URL` must use one of them.
+
+For GitLab specifically, in the project's (or group's) **Settings → Webhooks**:
+
+- URL: `https://<host>/hook/gitlab`
 - Secret token: the one the bot shows (it can be viewed again under
   **Webhook settings**)
 - Triggers: push and tag push events, comments, issues, merge requests,
@@ -89,7 +107,8 @@ enough. One token serves any number of projects and groups, on gitlab.com or
 a self-managed instance: no GitLab API access is needed, only that GitLab can
 reach `PUBLIC_URL`. A connection is removed from the bot itself (**Delete
 connection**), which stops delivery for every chat it feeds and makes GitLab's
-further deliveries fail with 401.
+further deliveries fail with 401. The same holds for the other hosts, with
+their own "test delivery" button.
 
 ## Creating the GitHub App
 
@@ -149,7 +168,8 @@ cp deploy/cloudflared/config.example.yml deploy/cloudflared/config.yml
 ```
 
 Put your tunnel id and host into `config.yml`; only `/gh/webhook`,
-`/gl/webhook` and `/github/setup` are exposed, everything else is a 404. Then:
+`/gl/webhook`, `/hook/...` and `/github/setup` are exposed, everything else is
+a 404. Then:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
@@ -157,7 +177,7 @@ docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
 
 `PUBLIC_URL` is the same `https://notify.example.com` used in the tunnel route.
 Telegram updates arrive over long polling anyway, so the only inbound traffic
-is the GitHub and GitLab webhooks, and the tunnel covers those paths entirely.
+is the webhooks, and the tunnel covers those paths entirely.
 
 **Run exactly one instance.** Telegram updates are fetched by long polling, and
 two copies would fight over `getUpdates`. Migrations take an advisory lock at

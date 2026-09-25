@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
+
+	"github.com/faustyu/gh-notify-go/internal/forge"
 )
 
 // ignoreFilter is one stored ignore rule. Kind selects what the pattern is
@@ -13,128 +15,13 @@ type ignoreFilter struct {
 	Pattern string
 }
 
-// eventSubjects extracts the matchable subjects from a raw payload. Authors,
-// branches and actions are single values; a payload carries many labels, so
-// labels come back as a list. Missing subjects are empty and never match.
+// eventSubjects extracts the matchable subjects from a raw payload, read the
+// way the kind's provider names them. Authors, branches and actions are
+// single values; a payload carries many labels, so labels come back as a
+// list. Missing subjects are empty and never match.
 func eventSubjects(kind string, raw json.RawMessage) (author, branch string, labels []string, action string) {
-	if strings.HasPrefix(kind, "gl_") {
-		return gitlabSubjects(kind, raw)
-	}
-
-	var p struct {
-		Ref    string `json:"ref"`
-		Action string `json:"action"`
-		Sender struct {
-			Login string `json:"login"`
-		} `json:"sender"`
-		Pusher struct {
-			Name string `json:"name"`
-		} `json:"pusher"`
-		Label struct {
-			Name string `json:"name"`
-		} `json:"label"`
-		PullRequest struct {
-			Head struct {
-				Ref string `json:"ref"`
-			} `json:"head"`
-			Labels []struct {
-				Name string `json:"name"`
-			} `json:"labels"`
-		} `json:"pull_request"`
-		Issue struct {
-			Labels []struct {
-				Name string `json:"name"`
-			} `json:"labels"`
-		} `json:"issue"`
-	}
-	_ = json.Unmarshal(raw, &p)
-
-	if p.Sender.Login != "" {
-		author = p.Sender.Login
-	} else {
-		author = p.Pusher.Name
-	}
-
-	switch {
-	case p.Ref != "":
-		branch = strings.TrimPrefix(strings.TrimPrefix(p.Ref, "refs/heads/"), "refs/tags/")
-	case p.PullRequest.Head.Ref != "":
-		branch = p.PullRequest.Head.Ref
-	}
-
-	// The top-level label field belongs to the "labeled"/"unlabeled" events;
-	// issues and pull requests carry their labels in a list.
-	if p.Label.Name != "" {
-		labels = append(labels, p.Label.Name)
-	}
-	for _, l := range p.PullRequest.Labels {
-		labels = append(labels, l.Name)
-	}
-	for _, l := range p.Issue.Labels {
-		labels = append(labels, l.Name)
-	}
-
-	return author, branch, labels, p.Action
-}
-
-// gitlabSubjects is eventSubjects for GitLab payloads, which name the same
-// things differently: the actor is user (or user_username on a push), a
-// merge request's branch is its source branch, a pipeline's is its ref.
-func gitlabSubjects(kind string, raw json.RawMessage) (author, branch string, labels []string, action string) {
-	var p struct {
-		Ref          string `json:"ref"`
-		UserUsername string `json:"user_username"`
-		Action       string `json:"action"`
-		Status       string `json:"status"`
-		User         struct {
-			Username string `json:"username"`
-		} `json:"user"`
-		Labels []struct {
-			Title string `json:"title"`
-		} `json:"labels"`
-		ObjectAttributes struct {
-			Action       string `json:"action"`
-			Status       string `json:"status"`
-			Ref          string `json:"ref"`
-			SourceBranch string `json:"source_branch"`
-		} `json:"object_attributes"`
-		MergeRequest struct {
-			SourceBranch string `json:"source_branch"`
-		} `json:"merge_request"`
-	}
-	_ = json.Unmarshal(raw, &p)
-
-	author = p.User.Username
-	if author == "" {
-		author = p.UserUsername
-	}
-
-	switch {
-	case p.Ref != "":
-		branch = strings.TrimPrefix(strings.TrimPrefix(p.Ref, "refs/heads/"), "refs/tags/")
-	case p.ObjectAttributes.SourceBranch != "":
-		branch = p.ObjectAttributes.SourceBranch
-	case p.ObjectAttributes.Ref != "":
-		branch = p.ObjectAttributes.Ref
-	case p.MergeRequest.SourceBranch != "":
-		branch = p.MergeRequest.SourceBranch
-	}
-
-	for _, l := range p.Labels {
-		labels = append(labels, l.Title)
-	}
-
-	switch kind {
-	case "gl_pipeline":
-		action = p.ObjectAttributes.Status
-	case "gl_deployment":
-		action = p.Status
-	case "gl_release":
-		action = p.Action
-	default:
-		action = p.ObjectAttributes.Action
-	}
-	return author, branch, labels, action
+	s := forge.ForKind(kind).Subjects(kind, raw)
+	return s.Author, s.Branch, s.Labels, s.Action
 }
 
 // filterIgnored reports whether any rule suppresses this payload. Matching is

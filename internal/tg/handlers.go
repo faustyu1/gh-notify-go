@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -12,8 +13,10 @@ import (
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
 
+	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/service"
 	"github.com/faustyu/gh-notify-go/internal/storage"
@@ -309,22 +312,28 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		audit(ctx, deps, userID, 0, "admin.broadcast_cancel", map[string]any{"bc": params["bc"]})
 		return refresh(ctx, deps, userID, query.From.ID, lang,
 			ui.Params{"screen": "adm_bc", "bc": params["bc"]})
-	case "a_gl_new":
-		id, err := deps.Store.GitLabConnectionForSetup(ctx, userID)
+	case "a_forge_new", "a_gl_new":
+		// a_gl_new is what menus sent before other webhook providers existed
+		// carry; it never names a provider.
+		hook, ok := forge.HookFor(cmp.Or(params["provider"], domain.ProviderGitLab))
+		if !ok {
+			return fmt.Errorf("connect: unknown provider %q", params["provider"])
+		}
+		id, err := deps.Store.ConnectionForSetup(ctx, hook.ID(), userID)
 		if err != nil {
 			return err
 		}
-		audit(ctx, deps, userID, 0, "gitlab.connect", map[string]any{"installation": id})
-		return reopen(ctx, deps, userID, query.From.ID, lang, "gl_hook",
+		audit(ctx, deps, userID, 0, hook.ID()+".connect", map[string]any{"installation": id})
+		return reopen(ctx, deps, userID, query.From.ID, lang, "hook_setup",
 			ui.Params{"installation": strconv.FormatInt(id, 10)})
-	case "a_gl_del":
+	case "a_forge_del", "a_gl_del":
 		// Scoped to the owner in the query itself: the params are the
 		// user's own, but a connection is only ever removed by whoever made it.
-		if err := deps.Store.DeleteGitLabConnection(ctx,
+		if err := deps.Store.DeleteConnection(ctx,
 			paramInt(params["installation"]), userID); err != nil {
 			return err
 		}
-		audit(ctx, deps, userID, 0, "gitlab.delete",
+		audit(ctx, deps, userID, 0, "connection.delete",
 			map[string]any{"installation": params["installation"]})
 		return reopen(ctx, deps, userID, query.From.ID, lang, "accounts", nil)
 	case "a_int_del":

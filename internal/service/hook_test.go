@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
-	"github.com/faustyu/gh-notify-go/internal/gitlab"
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/secret"
 	"github.com/faustyu/gh-notify-go/internal/service"
@@ -33,7 +33,7 @@ func newGitLabIngest(t *testing.T) (*service.Ingest, *storage.Store, *pgxpool.Po
 	require.NoError(t, err)
 	chatID, err := store.UpsertChat(ctx, -100, "Team", "supergroup", false)
 	require.NoError(t, err)
-	connection, err := store.CreateGitLabConnection(ctx, userID)
+	connection, err := store.CreateConnection(ctx, "gitlab", userID)
 	require.NoError(t, err)
 	integrationID, err := store.CreateIntegration(ctx, chatID, connection, 15, "mike/diaspora", userID)
 	require.NoError(t, err)
@@ -42,13 +42,13 @@ func newGitLabIngest(t *testing.T) (*service.Ingest, *storage.Store, *pgxpool.Po
 		store, store.Pool(), connection, integrationID
 }
 
-func glEnvelope(t *testing.T, uuid, body string) gitlab.Envelope {
+func glEnvelope(t *testing.T, uuid, body string) forge.Envelope {
 	t.Helper()
 	header := http.Header{}
 	if uuid != "" {
 		header.Set("X-Gitlab-Event-UUID", uuid)
 	}
-	env, err := gitlab.ParseEnvelope(header, []byte(body))
+	env, err := forge.GitLab.Parse(header, []byte(body))
 	require.NoError(t, err)
 	return env
 }
@@ -65,21 +65,21 @@ func TestHandleGitLabEnqueuesAndRemembersProject(t *testing.T) {
 	ctx := context.Background()
 	ingest, _, pool, connection, _ := newGitLabIngest(t)
 
-	result, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "u-1", glMergeRequestBody))
+	result, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "u-1", glMergeRequestBody))
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Matched)
 	require.Equal(t, 1, result.Enqueued)
 
 	var kind string
 	require.NoError(t, pool.QueryRow(ctx, `SELECT event_kind FROM outbox`).Scan(&kind))
-	require.Equal(t, gitlab.KindMergeRequest, kind)
+	require.Equal(t, forge.KindGitLabMergeRequest, kind)
 
 	var path string
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT path FROM gitlab_projects WHERE installation_id = $1`, connection).Scan(&path))
+		`SELECT path FROM forge_projects WHERE installation_id = $1`, connection).Scan(&path))
 	require.Equal(t, "mike/diaspora", path)
 
-	again, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "u-1", glMergeRequestBody))
+	again, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "u-1", glMergeRequestBody))
 	require.NoError(t, err)
 	require.True(t, again.Duplicate)
 }
@@ -90,14 +90,14 @@ func TestHandleGitLabRemembersProjectOfUnwantedKind(t *testing.T) {
 	ctx := context.Background()
 	ingest, _, pool, connection, _ := newGitLabIngest(t)
 
-	result, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "", `{"object_kind":"build",
+	result, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "", `{"object_kind":"build",
 		"project_id":99,"project":{"id":99,"path_with_namespace":"acme/other"}}`))
 	require.NoError(t, err)
 	require.Zero(t, result.Enqueued)
 
 	var count int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM gitlab_projects WHERE project_id = 99`).Scan(&count))
+		`SELECT count(*) FROM forge_projects WHERE project_id = 99`).Scan(&count))
 	require.Equal(t, 1, count)
 }
 
@@ -110,7 +110,7 @@ func TestHandleGitLabHonoursFilters(t *testing.T) {
 		integrationID)
 	require.NoError(t, err)
 
-	result, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "u-2", glMergeRequestBody))
+	result, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "u-2", glMergeRequestBody))
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Skipped)
 	require.Zero(t, result.Enqueued)
@@ -126,14 +126,14 @@ func TestHandleGitLabBranchAndAuthorFilters(t *testing.T) {
 
 	push := `{"object_kind":"push","ref":"refs/heads/renovate/deps","user_username":"alice",
 		"project_id":15,"project":{"id":15,"path_with_namespace":"mike/diaspora"}}`
-	result, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "p-1", push))
+	result, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "p-1", push))
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Skipped, "branch rule must match a push ref")
 
 	note := `{"object_kind":"note","user":{"username":"bot"},
 		"project":{"id":15,"path_with_namespace":"mike/diaspora"},
 		"object_attributes":{"noteable_type":"Issue"}}`
-	result, err = ingest.HandleGitLab(ctx, connection, glEnvelope(t, "n-1", note))
+	result, err = ingest.HandleHook(ctx, connection, glEnvelope(t, "n-1", note))
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Skipped, "author rule must match a note's user")
 }
@@ -146,13 +146,64 @@ func TestHandleGitLabDedupIsPerConnection(t *testing.T) {
 
 	userID, _, err := store.UpsertUser(ctx, 556, "en")
 	require.NoError(t, err)
-	second, err := store.CreateGitLabConnection(ctx, userID)
+	second, err := store.CreateConnection(ctx, "gitlab", userID)
 	require.NoError(t, err)
 
-	first, err := ingest.HandleGitLab(ctx, connection, glEnvelope(t, "same", glMergeRequestBody))
+	first, err := ingest.HandleHook(ctx, connection, glEnvelope(t, "same", glMergeRequestBody))
 	require.NoError(t, err)
 	require.False(t, first.Duplicate)
-	other, err := ingest.HandleGitLab(ctx, second, glEnvelope(t, "same", glMergeRequestBody))
+	other, err := ingest.HandleHook(ctx, second, glEnvelope(t, "same", glMergeRequestBody))
 	require.NoError(t, err)
 	require.False(t, other.Duplicate)
+}
+
+// A Gitea connection feeds the same path: its repository is remembered, its
+// kinds are enqueued, and ignore rules read Gitea's payload shape.
+func TestHandleGiteaEnqueuesAndHonoursFilters(t *testing.T) {
+	ctx := context.Background()
+	ingest, store, pool, _, _ := newGitLabIngest(t)
+
+	userID, _, err := store.UpsertUser(ctx, 557, "en")
+	require.NoError(t, err)
+	chatID, err := store.UpsertChat(ctx, -200, "Tea", "supergroup", false)
+	require.NoError(t, err)
+	connection, err := store.CreateConnection(ctx, "gitea", userID)
+	require.NoError(t, err)
+	integrationID, err := store.CreateIntegration(ctx, chatID, connection, 7, "mike/tea", userID)
+	require.NoError(t, err)
+
+	parse := func(delivery, event, body string) forge.Envelope {
+		header := http.Header{}
+		header.Set("X-Gitea-Event", event)
+		header.Set("X-Gitea-Delivery", delivery)
+		env, err := forge.Gitea.Parse(header, []byte(body))
+		require.NoError(t, err)
+		return env
+	}
+	const repo = `"repository":{"id":7,"full_name":"mike/tea","html_url":"https://tea.example.com/mike/tea"}`
+
+	result, err := ingest.HandleHook(ctx, connection, parse("d-1", "pull_request",
+		`{"action":"opened","number":1,"sender":{"login":"anna"},
+		"pull_request":{"head":{"ref":"feature"}},`+repo+`}`))
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Enqueued)
+
+	var kind string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT event_kind FROM outbox WHERE integration_id = $1`, integrationID).Scan(&kind))
+	require.Equal(t, forge.KindGiteaPullRequest, kind)
+
+	_, err = pool.Exec(ctx,
+		`INSERT INTO filters (integration_id, kind, pattern) VALUES ($1, 'branch', 'renovate/*')`,
+		integrationID)
+	require.NoError(t, err)
+	result, err = ingest.HandleHook(ctx, connection, parse("d-2", "push",
+		`{"ref":"refs/heads/renovate/deps","commits":[],"pusher":{"login":"bot"},`+repo+`}`))
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Skipped)
+
+	projects, err := store.Projects(ctx, connection, userID)
+	require.NoError(t, err)
+	require.Equal(t, []storage.Project{{ID: 7, Path: "mike/tea",
+		WebURL: "https://tea.example.com/mike/tea"}}, projects)
 }

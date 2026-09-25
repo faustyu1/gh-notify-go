@@ -1,10 +1,11 @@
-# Прокси для GitHub App и вебхуков GitLab: наружу торчат только три пути,
-# остальное — 404.
+# Прокси для GitHub App и вебхуков GitLab, Gitea, Forgejo и GitVerse: наружу
+# торчат только эти пути, остальное — 404.
 # Подставь свой домен и пути к сертификатам (например, от certbot).
 #
 #   GitHub App → Webhook URL: https://notify.example.com/gh/webhook
 #   GitHub App → Setup URL:   https://notify.example.com/github/setup
-#   GitLab     → Webhook URL: https://notify.example.com/gl/webhook
+#   GitLab, Gitea, Forgejo, GitVerse → Webhook URL: https://notify.example.com/hook/...
+#     (точный адрес показывает бот; старый /gl/webhook тоже работает)
 
 server {
     listen 80;
@@ -40,6 +41,16 @@ server {
         proxy_http_version 1.1;
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;
+    }
+
+    # Вебхуки GitLab, Gitea, Forgejo и GitVerse: /hook/<провайдер>[/<подключение>].
+    # Gitea и Forgejo подписывают тело HMAC, его тоже передаём байт-в-байт.
+    location /hook/ {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_request_buffering off;
     }
 
     location = /github/setup {

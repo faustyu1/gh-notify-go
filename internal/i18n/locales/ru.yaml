@@ -23,7 +23,6 @@ btn:
   prev_page: "Раньше"
   next_page: "Вперёд"
   connect_to_chat: "Подключить к чату"
-  open_github: "Открыть на GitHub"
   install_app: "Установить GitHub App"
   installed: "Я установил"
   events: "События"
@@ -37,22 +36,22 @@ btn:
   configure: "Настроить"
   add_to_group: "Добавить в группу"
   admin: "Админка"
-  connect_gitlab: "Подключить GitLab"
-  open_gitlab: "Открыть на GitLab"
-  gitlab_projects: "Проекты"
-  gitlab_webhook: "Настройка вебхука"
-  gitlab_delete: "Удалить подключение"
-  gitlab_delete_yes: "Да, удалить"
+  connect_other: "Другие платформы"
+  open_on: "Открыть на {name}"
+  forge_projects: "Репозитории"
+  forge_webhook: "Настройка вебхука"
+  forge_delete: "Удалить подключение"
+  forge_delete_yes: "Да, удалить"
   refresh: "Обновить"
 
 home:
-  greeting: "Подключи GitHub или GitLab, и события репозиториев будут приходить в твои чаты."
+  greeting: "Подключи GitHub, GitLab, Gitea, Forgejo или GitVerse, и события репозиториев будут приходить в твои чаты."
   accounts: "Аккаунтов"
   repos: "Репозиториев"
   chats: "Чатов"
 
 accounts:
-  empty: "Пока нет подключённых аккаунтов GitHub или GitLab."
+  empty: "Пока нет подключённых аккаунтов."
   title: "Аккаунты"
   hint: "Выбери, где лежит репозиторий."
 
@@ -68,14 +67,21 @@ install:
   title: "Подключение GitHub"
   body: "Нажми кнопку ниже, выбери аккаунт или организацию и отметь нужные репозитории. После установки GitHub вернёт тебя обратно сюда."
 
-gitlab:
-  unnamed: "GitLab"
-  hook_title: "Вебхук GitLab"
-  hook_body: "1. В GitLab открой проект (или группу) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Триггеры: push и tag push, комментарии, issues, merge requests, пайплайны, wiki, деплои, релизы.\n5. Сохрани и нажми <b>Test → Push events</b>: проект появится в списке.\n\nОдин токен подходит для любого числа проектов и групп."
-  projects_title: "GitLab · {name}"
-  projects_empty: "От GitLab пока не было событий.\n\nДобавь вебхук в проект или группу и нажми «Test» в его настройках — проект появится здесь."
-  projects_count: "Проектов: {n}"
-  delete_confirm: "Удалить это подключение GitLab?\n\nЕго репозитории перестанут присылать события во все чаты, а запросы GitLab с этим токеном будут отклоняться. Удали вебхук и в самом GitLab."
+forge:
+  hook_title: "Вебхук {name}"
+  hook:
+    gitlab: "1. В GitLab открой проект (или группу) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Триггеры: push и tag push, комментарии, issues, merge requests, пайплайны, wiki, деплои, релизы.\n5. Сохрани и нажми <b>Test → Push events</b>: проект появится в списке.\n\nОдин токен подходит для любого числа проектов и групп."
+    gitea: "1. В Gitea открой репозиторий (или организацию) → <b>Настройки → Веб-хуки</b> → <b>Добавить веб-хук → Gitea</b>.\n2. URL:\n<code>{url}</code>\n3. Тип содержимого: <b>application/json</b>.\n4. Секрет:\n<code>{token}</code>\n5. События: push, создание и удаление веток и тегов, задачи, комментарии, pull requests, ревью, релизы, wiki.\n6. Сохрани, открой вебхук и нажми <b>Тестовая доставка</b>: репозиторий появится в списке.\n\nЭти адрес и секрет подходят для любого числа репозиториев."
+    forgejo: "1. В Forgejo (и на Codeberg) открой репозиторий (или организацию) → <b>Настройки → Веб-хуки</b> → <b>Добавить веб-хук → Forgejo</b>.\n2. URL:\n<code>{url}</code>\n3. Тип содержимого: <b>application/json</b>.\n4. Секрет:\n<code>{token}</code>\n5. События: push, создание и удаление веток и тегов, задачи, комментарии, pull requests, ревью, релизы, wiki.\n6. Сохрани, открой вебхук и нажми <b>Тестовая доставка</b>: репозиторий появится в списке.\n\nЭти адрес и секрет подходят для любого числа репозиториев."
+    gitverse: "1. В GitVerse открой репозиторий → <b>Настройки → Вебхуки</b> → добавь вебхук типа <b>Custom URL</b>.\n2. URL:\n<code>{url}</code>\n3. Заголовок Authorization:\n<code>{token}</code>\n4. События: все или выбранные — push, pull requests, задачи, комментарии, релизы.\n5. Сохрани и повтори доставку в <b>Последних рассылках</b> (или сделай push): репозиторий появится в списке.\n\nGitVerse ходит только на порты 80 и 443, поэтому адрес бота должен использовать один из них."
+  projects_title: "{provider} · {name}"
+  projects_empty: "От {provider} пока не было событий.\n\nДобавь вебхук в репозиторий и отправь тестовую доставку из его настроек — репозиторий появится здесь."
+  projects_count: "Репозиториев: {n}"
+  delete_confirm: "Удалить это подключение {provider}?\n\nЕго репозитории перестанут присылать события во все чаты, а запросы для него будут отклоняться. Удали вебхук и в самом {provider}."
+
+connect:
+  title: "Другие платформы"
+  body: "GitLab, Gitea, Forgejo и GitVerse подключаются через вебхук: бот выдаёт адрес и секрет, а ты добавляешь их в репозиторий, проект или группу."
 
 chat_picker:
   empty: "Бот пока не добавлен ни в один твой чат.\n\nДобавь его в группу, и чат появится здесь."
