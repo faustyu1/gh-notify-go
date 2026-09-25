@@ -650,6 +650,11 @@ func TestAccountsRoutesWebhookConnectionsToProjects(t *testing.T) {
 				require.Equal(t, "2", b.Params["installation"])
 			case "Gitea · tea":
 				require.Equal(t, "forge_projects", b.Screen)
+			case "Other platforms":
+				// "connect" is the chat picker's action; a screen of that
+				// name is swallowed by the callback handler and never opens.
+				require.Equal(t, "forge_connect", b.Screen)
+				require.Equal(t, "forge_connect", screens.NewConnect(loc).Name())
 			case "acme":
 				require.Equal(t, "repos", b.Screen)
 			}

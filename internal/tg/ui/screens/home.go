@@ -47,7 +47,7 @@ func (h home) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 				l.T("home.greeting"),
 			Rows: [][]ui.Button{
 				{{Label: l.T("btn.connect_github"), Icon: render.EmojiLink, Screen: "install"}},
-				{{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "connect"}},
+				{{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "forge_connect"}},
 			},
 		}, l, s.TelegramID), nil
 	}

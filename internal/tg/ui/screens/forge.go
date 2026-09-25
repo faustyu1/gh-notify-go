@@ -64,7 +64,7 @@ type connect struct {
 // NewConnect offers the providers connected by a webhook.
 func NewConnect(loc *i18n.Bundle) ui.Screen { return connect{loc: loc} }
 
-func (c connect) Name() string { return "connect" }
+func (c connect) Name() string { return "forge_connect" }
 
 func (c connect) Render(_ context.Context, s ui.Session) (ui.View, error) {
 	l := c.loc.Localizer(s.Lang)

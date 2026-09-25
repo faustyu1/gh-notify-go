@@ -33,7 +33,7 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("accounts.empty"),
 			Rows: [][]ui.Button{
 				{{Label: l.T("btn.connect_github"), Icon: render.EmojiLink, Screen: "install"}},
-				{{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "connect"}},
+				{{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "forge_connect"}},
 			},
 		}, nil
 	}
@@ -67,7 +67,7 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	}
 	rows = append(rows, []ui.Button{
 		{Label: l.T("btn.more_accounts"), Icon: render.EmojiPlus, Screen: "install"},
-		{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "connect"},
+		{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "forge_connect"},
 	})
 
 	return ui.View{
