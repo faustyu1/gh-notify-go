@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
@@ -33,18 +33,18 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("accounts.empty"),
 			Rows: [][]ui.Button{
 				{{Label: l.T("btn.connect_github"), Icon: render.EmojiLink, Screen: "install"}},
-				{{Label: l.T("btn.connect_gitlab"), Icon: render.EmojiCode, Screen: "a_gl_new"}},
+				{{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "connect"}},
 			},
 		}, nil
 	}
 
 	rows := make([][]ui.Button, 0, len(installations)+1)
 	for _, it := range installations {
-		if it.Provider == domain.ProviderGitLab {
+		if _, ok := forge.HookFor(it.Provider); ok {
 			rows = append(rows, []ui.Button{{
-				Label:  gitlabName(l, it),
+				Label:  forgeName(l, it),
 				Icon:   render.EmojiCode,
-				Screen: "gl_projects",
+				Screen: "forge_projects",
 				Params: ui.Params{"installation": strconv.FormatInt(it.ID, 10)},
 			}})
 			continue
@@ -67,7 +67,7 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	}
 	rows = append(rows, []ui.Button{
 		{Label: l.T("btn.more_accounts"), Icon: render.EmojiPlus, Screen: "install"},
-		{Label: l.T("btn.connect_gitlab"), Icon: render.EmojiCode, Screen: "a_gl_new"},
+		{Label: l.T("btn.connect_other"), Icon: render.EmojiCode, Screen: "connect"},
 	})
 
 	return ui.View{

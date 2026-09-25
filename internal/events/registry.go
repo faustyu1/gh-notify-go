@@ -1,4 +1,4 @@
-// Package events turns GitHub webhook payloads into Telegram HTML. Each
+// Package events turns webhook payloads into Telegram HTML. Each
 // event type lives in its own file and registers itself in init(), so adding
 // a type is one new file and no edits elsewhere.
 package events
@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strings"
 	"sync"
 
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
@@ -90,27 +90,27 @@ func Kinds() []Kind {
 	return out
 }
 
-// gitlabPrefix marks the kinds that come from GitLab webhooks.
-const gitlabPrefix = "gl_"
-
 // KindsFor returns the kinds an integration from this provider can receive,
-// in the same stable order as Kinds. GitLab integrations get the gl_ kinds,
-// everything else gets the rest.
+// in the same stable order as Kinds: the ones carrying the prefix of the
+// provider's payload format.
 func KindsFor(provider string) []Kind {
+	prefix := ""
+	if p, ok := forge.Get(provider); ok {
+		prefix = p.KindPrefix()
+	}
 	all := Kinds()
 	out := make([]Kind, 0, len(all))
 	for _, k := range all {
-		if strings.HasPrefix(string(k), gitlabPrefix) == (provider == "gitlab") {
+		if forge.PrefixOf(string(k)) == prefix {
 			out = append(out, k)
 		}
 	}
 	return out
 }
 
-// Label is how a kind is shown on a toggle: the gl_ prefix only separates
-// the providers internally, and a GitLab integration never sees the others.
+// Label is how a kind is shown on a toggle.
 func Label(kind Kind) string {
-	return strings.TrimPrefix(string(kind), gitlabPrefix)
+	return forge.Label(string(kind))
 }
 
 // ImportantKinds is what the «Только важное» preset keeps on.
@@ -120,6 +120,9 @@ var ImportantKinds = map[Kind]bool{
 
 	"gl_merge_request": true, "gl_issue": true, "gl_note": true,
 	"gl_pipeline": true, "gl_release": true,
+
+	"gt_pull_request": true, "gt_issues": true, "gt_issue_comment": true,
+	"gt_pull_request_review": true, "gt_release": true,
 }
 
 // PresetEnabled reports whether a named preset keeps a kind enabled.

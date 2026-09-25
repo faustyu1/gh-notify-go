@@ -39,11 +39,20 @@ func TestKindsForSeparatesProviders(t *testing.T) {
 	require.Contains(t, gitlab, events.Kind("gl_push"))
 	require.Contains(t, gitlab, events.Kind("gl_merge_request"))
 	require.NotContains(t, gitlab, events.Kind("push"))
-	require.Len(t, events.Kinds(), len(github)+len(gitlab))
+
+	// Gitea and its forks share one payload format and so one set of kinds.
+	gitea := events.KindsFor("gitea")
+	require.Contains(t, gitea, events.Kind("gt_pull_request"))
+	require.NotContains(t, gitea, events.Kind("pull_request"))
+	require.Equal(t, gitea, events.KindsFor("forgejo"))
+	require.Equal(t, gitea, events.KindsFor("gitverse"))
+
+	require.Len(t, events.Kinds(), len(github)+len(gitlab)+len(gitea))
 }
 
-func TestLabelDropsGitLabPrefix(t *testing.T) {
+func TestLabelDropsProviderPrefix(t *testing.T) {
 	require.Equal(t, "merge_request", events.Label("gl_merge_request"))
+	require.Equal(t, "pull_request", events.Label("gt_pull_request"))
 	require.Equal(t, "push", events.Label("push"))
 }
 

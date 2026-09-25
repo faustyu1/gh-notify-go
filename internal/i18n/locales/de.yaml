@@ -22,7 +22,6 @@ btn:
   prev_page: "Neuere"
   next_page: "Ältere"
   connect_to_chat: "Mit Chat verbinden"
-  open_github: "Auf GitHub öffnen"
   install_app: "GitHub App installieren"
   installed: "Ich habe installiert"
   events: "Ereignisse"
@@ -36,22 +35,22 @@ btn:
   configure: "Einrichten"
   add_to_group: "Zur Gruppe hinzufügen"
   admin: "Admin-Bereich"
-  connect_gitlab: "GitLab verbinden"
-  open_gitlab: "Auf GitLab öffnen"
-  gitlab_projects: "Projekte"
-  gitlab_webhook: "Webhook-Einstellungen"
-  gitlab_delete: "Verbindung löschen"
-  gitlab_delete_yes: "Ja, löschen"
+  connect_other: "Weitere Plattformen"
+  open_on: "Auf {name} öffnen"
+  forge_projects: "Repositories"
+  forge_webhook: "Webhook-Einstellungen"
+  forge_delete: "Verbindung löschen"
+  forge_delete_yes: "Ja, löschen"
   refresh: "Aktualisieren"
 
 home:
-  greeting: "Verbinde GitHub oder GitLab, und die Ereignisse deiner Repositories kommen in deine Chats."
+  greeting: "Verbinde GitHub, GitLab, Gitea, Forgejo oder GitVerse, und die Ereignisse deiner Repositories kommen in deine Chats."
   accounts: "Konten"
   repos: "Repositories"
   chats: "Chats"
 
 accounts:
-  empty: "Noch keine GitHub- oder GitLab-Konten verbunden."
+  empty: "Noch keine Konten verbunden."
   title: "Konten"
   hint: "Wähle, wo das Repository liegt."
 
@@ -67,14 +66,21 @@ install:
   title: "GitHub verbinden"
   body: "Tippe unten auf die Schaltfläche, wähle ein Konto oder eine Organisation und markiere die benötigten Repositories. GitHub bringt dich nach der Installation hierher zurück."
 
-gitlab:
-  unnamed: "GitLab"
-  hook_title: "GitLab-Webhook"
-  hook_body: "1. Öffne in GitLab das Projekt (oder die Gruppe) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Auslöser: Push und Tag-Push, Kommentare, Issues, Merge Requests, Pipelines, Wiki, Deployments, Releases.\n5. Speichern und <b>Test → Push events</b> drücken: das Projekt erscheint in der Liste.\n\nEin Token reicht für beliebig viele Projekte und Gruppen."
-  projects_title: "GitLab · {name}"
-  projects_empty: "Noch keine Ereignisse von GitLab.\n\nFüge den Webhook zu einem Projekt oder einer Gruppe hinzu und drücke dort „Test“ — das Projekt erscheint dann hier."
-  projects_count: "Projekte: {n}"
-  delete_confirm: "Diese GitLab-Verbindung löschen?\n\nIhre Repositories senden keine Ereignisse mehr an die Chats, und GitLab-Zustellungen mit diesem Token werden abgewiesen. Entferne den Webhook auch in GitLab."
+forge:
+  hook_title: "{name}-Webhook"
+  hook:
+    gitlab: "1. Öffne in GitLab das Projekt (oder die Gruppe) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Auslöser: Push und Tag-Push, Kommentare, Issues, Merge Requests, Pipelines, Wiki, Deployments, Releases.\n5. Speichern und <b>Test → Push events</b> drücken: das Projekt erscheint in der Liste.\n\nEin Token reicht für beliebig viele Projekte und Gruppen."
+    gitea: "1. Öffne in Gitea das Repository (oder die Organisation) → <b>Einstellungen → Webhooks</b> → <b>Webhook hinzufügen → Gitea</b>.\n2. Ziel-URL:\n<code>{url}</code>\n3. Content-Type: <b>application/json</b>.\n4. Secret:\n<code>{token}</code>\n5. Auslöser: Push, Anlegen und Löschen von Branches und Tags, Issues, Kommentare, Pull Requests, Reviews, Releases, Wiki.\n6. Speichern, den Webhook öffnen und <b>Test-Zustellung</b> drücken: das Repository erscheint in der Liste.\n\nAdresse und Secret reichen für beliebig viele Repositories."
+    forgejo: "1. Öffne in Forgejo (auch auf Codeberg) das Repository (oder die Organisation) → <b>Einstellungen → Webhooks</b> → <b>Webhook hinzufügen → Forgejo</b>.\n2. Ziel-URL:\n<code>{url}</code>\n3. Content-Type: <b>application/json</b>.\n4. Secret:\n<code>{token}</code>\n5. Auslöser: Push, Anlegen und Löschen von Branches und Tags, Issues, Kommentare, Pull Requests, Reviews, Releases, Wiki.\n6. Speichern, den Webhook öffnen und <b>Test-Zustellung</b> drücken: das Repository erscheint in der Liste.\n\nAdresse und Secret reichen für beliebig viele Repositories."
+    gitverse: "1. Öffne in GitVerse das Repository → <b>Einstellungen → Webhooks</b> → füge einen Webhook vom Typ <b>Custom URL</b> hinzu.\n2. URL:\n<code>{url}</code>\n3. Authorization-Header:\n<code>{token}</code>\n4. Ereignisse: alle oder ausgewählte — Push, Pull Requests, Issues, Kommentare, Releases.\n5. Speichern und eine Zustellung unter <b>Letzte Zustellungen</b> erneut senden (oder pushen): das Repository erscheint in der Liste.\n\nGitVerse erreicht nur die Ports 80 und 443, die Adresse des Bots muss also einen davon nutzen."
+  projects_title: "{provider} · {name}"
+  projects_empty: "Noch keine Ereignisse von {provider}.\n\nFüge den Webhook zu einem Repository hinzu und sende aus seinen Einstellungen eine Test-Zustellung — das Repository erscheint dann hier."
+  projects_count: "Repositories: {n}"
+  delete_confirm: "Diese {provider}-Verbindung löschen?\n\nIhre Repositories senden keine Ereignisse mehr an die Chats, und Zustellungen dafür werden abgewiesen. Entferne den Webhook auch in {provider}."
+
+connect:
+  title: "Weitere Plattformen"
+  body: "GitLab, Gitea, Forgejo und GitVerse werden per Webhook verbunden: Der Bot gibt dir eine Adresse und ein Secret, die du in einem Repository, Projekt oder einer Gruppe einträgst."
 
 chat_picker:
   empty: "Der Bot ist noch in keinem deiner Chats.\n\nFüge ihn zu einer Gruppe hinzu, dann erscheint der Chat hier."

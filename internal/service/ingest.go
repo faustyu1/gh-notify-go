@@ -9,8 +9,8 @@ import (
 
 	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events"
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
-	"github.com/faustyu/gh-notify-go/internal/gitlab"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/storage"
 )
@@ -89,16 +89,17 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 	return i.fanOut(ctx, integrations, env.Kind, env.Raw)
 }
 
-// HandleGitLab is Handle for a GitLab delivery already authenticated to the
-// connection installationID. Every authenticated delivery registers its
-// project, including kinds nobody is notified about: the webhook's "Test"
-// button is how a project first shows up in the picker.
-func (i *Ingest) HandleGitLab(
-	ctx context.Context, installationID int64, env gitlab.Envelope,
+// HandleHook is Handle for a webhook-connection delivery already
+// authenticated to the connection installationID. Every authenticated
+// delivery registers its repository, including kinds nobody is notified
+// about: the webhook's test button is how a repository first shows up in the
+// picker.
+func (i *Ingest) HandleHook(
+	ctx context.Context, installationID int64, env forge.Envelope,
 ) (Result, error) {
 	var result Result
 
-	if err := i.store.RememberGitLabProject(ctx, installationID, storage.GitLabProject{
+	if err := i.store.RememberProject(ctx, installationID, storage.Project{
 		ID: env.ProjectID, Path: env.ProjectPath, WebURL: env.ProjectURL,
 	}); err != nil {
 		return result, err
@@ -121,7 +122,7 @@ func (i *Ingest) HandleGitLab(
 		return result, nil
 	}
 
-	integrations, err := i.store.IntegrationsForGitLabProject(ctx, installationID, env.ProjectID)
+	integrations, err := i.store.IntegrationsForProject(ctx, installationID, env.ProjectID)
 	if err != nil {
 		return result, fmt.Errorf("find integrations: %w", err)
 	}

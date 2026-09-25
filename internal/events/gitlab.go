@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
-	"github.com/faustyu/gh-notify-go/internal/gitlab"
+	"github.com/faustyu/gh-notify-go/internal/forge"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 )
 
@@ -29,17 +29,17 @@ type glUser struct {
 const glZeroSHA = "0000000000000000000000000000000000000000"
 
 func init() {
-	Register(gitlab.KindPush, nil, renderGitLabPush)
-	Register(gitlab.KindTagPush, nil, renderGitLabTagPush)
-	Register(gitlab.KindMergeRequest,
+	Register(forge.KindGitLabPush, nil, renderGitLabPush)
+	Register(forge.KindGitLabTagPush, nil, renderGitLabTagPush)
+	Register(forge.KindGitLabMergeRequest,
 		ActionFilter{"open", "close", "reopen", "merge", "approved"}, renderGitLabMergeRequest)
-	Register(gitlab.KindIssue, ActionFilter{"open", "close", "reopen"}, renderGitLabIssue)
-	Register(gitlab.KindNote, nil, renderGitLabNote)
-	Register(gitlab.KindPipeline,
+	Register(forge.KindGitLabIssue, ActionFilter{"open", "close", "reopen"}, renderGitLabIssue)
+	Register(forge.KindGitLabNote, nil, renderGitLabNote)
+	Register(forge.KindGitLabPipeline,
 		ActionFilter{"success", "failed", "canceled"}, renderGitLabPipeline)
-	Register(gitlab.KindRelease, ActionFilter{"create"}, renderGitLabRelease)
-	Register(gitlab.KindWikiPage, nil, renderGitLabWikiPage)
-	Register(gitlab.KindDeployment, ActionFilter{"success", "failed"}, renderGitLabDeployment)
+	Register(forge.KindGitLabRelease, ActionFilter{"create"}, renderGitLabRelease)
+	Register(forge.KindGitLabWikiPage, nil, renderGitLabWikiPage)
+	Register(forge.KindGitLabDeployment, ActionFilter{"success", "failed"}, renderGitLabDeployment)
 }
 
 // glHost is the instance's base URL, taken from the project URL so
