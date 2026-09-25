@@ -42,7 +42,11 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 		return ui.View{}, err
 	}
 
-	kinds := events.Kinds()
+	provider, err := e.store.ProviderForIntegration(ctx, mustAtoi64(integration))
+	if err != nil {
+		return ui.View{}, err
+	}
+	kinds := events.KindsFor(provider)
 
 	var presetRow []ui.Button
 	for _, p := range eventPresets {
@@ -65,7 +69,7 @@ func (e eventsScreen) Render(ctx context.Context, s ui.Session) (ui.View, error)
 			mark = render.EmojiCross
 		}
 		rows = append(rows, []ui.Button{{
-			Label:  string(kind),
+			Label:  events.Label(kind),
 			Icon:   mark,
 			Screen: "a_ev_toggle",
 			Params: ui.Params{

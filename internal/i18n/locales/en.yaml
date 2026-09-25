@@ -41,16 +41,23 @@ btn:
   configure: "Configure"
   add_to_group: "Add to group"
   admin: "Admin panel"
+  connect_gitlab: "Connect GitLab"
+  open_gitlab: "Open on GitLab"
+  gitlab_projects: "Projects"
+  gitlab_webhook: "Webhook settings"
+  gitlab_delete: "Delete connection"
+  gitlab_delete_yes: "Yes, delete"
+  refresh: "Refresh"
 
 home:
-  greeting: "Connect GitHub and repository events will arrive in your chats."
+  greeting: "Connect GitHub or GitLab and repository events will arrive in your chats."
   accounts: "Accounts"
   repos: "Repositories"
   chats: "Chats"
 
 accounts:
-  empty: "No GitHub accounts are connected yet."
-  title: "GitHub accounts"
+  empty: "No GitHub or GitLab accounts are connected yet."
+  title: "Accounts"
   hint: "Pick where the repository lives."
 
 repos:
@@ -64,6 +71,15 @@ repo_detail:
 install:
   title: "Connecting GitHub"
   body: "Tap the button below, pick an account or organization, and mark the repositories you need. GitHub will bring you back here after the install."
+
+gitlab:
+  unnamed: "GitLab"
+  hook_title: "GitLab webhook"
+  hook_body: "1. In GitLab open the project (or group) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Triggers: push and tag push events, comments, issues, merge requests, pipelines, wiki pages, deployments, releases.\n5. Save and press <b>Test → Push events</b>: the project will appear in the list.\n\nOne token works for any number of projects and groups."
+  projects_title: "GitLab · {name}"
+  projects_empty: "No events from GitLab yet.\n\nAdd the webhook to a project or a group and press “Test” in its settings — the project will appear here."
+  projects_count: "Projects: {n}"
+  delete_confirm: "Delete this GitLab connection?\n\nIts repositories stop sending events to every chat, and GitLab deliveries with this token will be refused. Remove the webhook in GitLab as well."
 
 chat_picker:
   empty: "The bot has not been added to any of your chats yet.\n\nAdd it to a group and the chat will show up here."
@@ -269,6 +285,25 @@ ev:
 
   digest:
     line: "Too many events in one minute — {n} more: {list}"
+
+  gitlab:
+    merge_request:
+      opened: "{user} opened merge request {link}"
+      draft: "{user} opened a draft merge request {link}"
+      closed: "{user} closed merge request {link}"
+      reopened: "{user} reopened merge request {link}"
+      merged: "{user} merged merge request {link}"
+      approved: "{user} approved merge request {link}"
+    note:
+      merge_request: "{user} commented on merge request {link}"
+      snippet: "{user} commented on snippet {link}"
+    pipeline:
+      line: "Pipeline #{id} — {verdict} · <code>{branch}</code>"
+      failed: "failed"
+      canceled: "canceled"
+      view: "View pipeline"
+    release:
+      line: "Release {link} published"
 
   detail: "Details"
   report: "Report"

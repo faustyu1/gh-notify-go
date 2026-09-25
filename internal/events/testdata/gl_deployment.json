@@ -1,0 +1,15 @@
+{
+  "object_kind": "deployment",
+  "status": "success",
+  "deployment_id": 15,
+  "deployable_id": 796,
+  "deployable_url": "https://gitlab.example.com/root/test-deployment-webhooks/-/jobs/796",
+  "environment": "staging",
+  "project": {
+    "id": 30,
+    "web_url": "https://gitlab.example.com/root/test-deployment-webhooks",
+    "path_with_namespace": "root/test-deployment-webhooks"
+  },
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "ref": "1.0.0"
+}

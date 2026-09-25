@@ -1,0 +1,19 @@
+{
+  "object_kind": "issue",
+  "event_type": "issue",
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "project": {
+    "id": 1,
+    "web_url": "https://gitlab.example.com/gitlabhq/gitlab-test",
+    "path_with_namespace": "gitlabhq/gitlab-test"
+  },
+  "object_attributes": {
+    "iid": 23,
+    "title": "New API: create/update/delete file",
+    "description": "Create new API for manipulations with repository",
+    "state": "opened",
+    "action": "open",
+    "url": "https://gitlab.example.com/gitlabhq/gitlab-test/-/issues/23"
+  },
+  "labels": [{"id": 206, "title": "API"}]
+}

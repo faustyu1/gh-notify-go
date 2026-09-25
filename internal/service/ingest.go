@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events"
 	"github.com/faustyu/gh-notify-go/internal/ghapp"
+	"github.com/faustyu/gh-notify-go/internal/gitlab"
 	"github.com/faustyu/gh-notify-go/internal/outbox"
 	"github.com/faustyu/gh-notify-go/internal/storage"
 )
@@ -84,10 +86,57 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 	if err != nil {
 		return result, fmt.Errorf("find integrations: %w", err)
 	}
-	result.Matched = len(integrations)
+	return i.fanOut(ctx, integrations, env.Kind, env.Raw)
+}
+
+// HandleGitLab is Handle for a GitLab delivery already authenticated to the
+// connection installationID. Every authenticated delivery registers its
+// project, including kinds nobody is notified about: the webhook's "Test"
+// button is how a project first shows up in the picker.
+func (i *Ingest) HandleGitLab(
+	ctx context.Context, installationID int64, env gitlab.Envelope,
+) (Result, error) {
+	var result Result
+
+	if err := i.store.RememberGitLabProject(ctx, installationID, storage.GitLabProject{
+		ID: env.ProjectID, Path: env.ProjectPath, WebURL: env.ProjectURL,
+	}); err != nil {
+		return result, err
+	}
+
+	if !events.Wanted(events.Kind(env.Kind), env.Action) {
+		return result, nil
+	}
+
+	// GitLab reuses one event UUID for every webhook an event triggers, so a
+	// project hook and a group hook on two connections must not suppress
+	// each other.
+	fresh, err := i.queue.MarkDelivered(ctx,
+		fmt.Sprintf("%s:%d", env.DeliveryID, installationID))
+	if err != nil {
+		return result, fmt.Errorf("dedup delivery: %w", err)
+	}
+	if !fresh {
+		result.Duplicate = true
+		return result, nil
+	}
+
+	integrations, err := i.store.IntegrationsForGitLabProject(ctx, installationID, env.ProjectID)
+	if err != nil {
+		return result, fmt.Errorf("find integrations: %w", err)
+	}
+	return i.fanOut(ctx, integrations, env.Kind, env.Raw)
+}
+
+// fanOut enqueues one delivery per integration that has the kind enabled and
+// no filter ignoring it.
+func (i *Ingest) fanOut(
+	ctx context.Context, integrations []domain.Integration, kind string, raw json.RawMessage,
+) (Result, error) {
+	result := Result{Matched: len(integrations)}
 
 	for _, integration := range integrations {
-		enabled, err := i.store.EventEnabled(ctx, integration.ID, env.Kind)
+		enabled, err := i.store.EventEnabled(ctx, integration.ID, kind)
 		if err != nil {
 			return result, fmt.Errorf("check event setting: %w", err)
 		}
@@ -105,7 +154,7 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 			for _, r := range rules {
 				converted = append(converted, ignoreFilter{Kind: r.Kind, Pattern: r.Value})
 			}
-			if filterIgnored(env.Kind, env.Raw, converted) {
+			if filterIgnored(kind, raw, converted) {
 				result.Skipped++
 				continue
 			}
@@ -114,8 +163,8 @@ func (i *Ingest) Handle(ctx context.Context, env ghapp.Envelope) (Result, error)
 		if _, err := i.queue.Enqueue(ctx, outbox.Row{
 			ChatID:        integration.ChatID,
 			IntegrationID: integration.ID,
-			Kind:          env.Kind,
-			Payload:       env.Raw,
+			Kind:          kind,
+			Payload:       raw,
 		}); err != nil {
 			return result, fmt.Errorf("enqueue for integration %d: %w", integration.ID, err)
 		}

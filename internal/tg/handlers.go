@@ -309,6 +309,24 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		audit(ctx, deps, userID, 0, "admin.broadcast_cancel", map[string]any{"bc": params["bc"]})
 		return refresh(ctx, deps, userID, query.From.ID, lang,
 			ui.Params{"screen": "adm_bc", "bc": params["bc"]})
+	case "a_gl_new":
+		id, err := deps.Store.GitLabConnectionForSetup(ctx, userID)
+		if err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "gitlab.connect", map[string]any{"installation": id})
+		return reopen(ctx, deps, userID, query.From.ID, lang, "gl_hook",
+			ui.Params{"installation": strconv.FormatInt(id, 10)})
+	case "a_gl_del":
+		// Scoped to the owner in the query itself: the params are the
+		// user's own, but a connection is only ever removed by whoever made it.
+		if err := deps.Store.DeleteGitLabConnection(ctx,
+			paramInt(params["installation"]), userID); err != nil {
+			return err
+		}
+		audit(ctx, deps, userID, 0, "gitlab.delete",
+			map[string]any{"installation": params["installation"]})
+		return reopen(ctx, deps, userID, query.From.ID, lang, "accounts", nil)
 	case "a_int_del":
 		if err := deps.Store.DeleteIntegration(ctx, paramInt(params["integration"])); err != nil {
 			return err
@@ -430,9 +448,13 @@ func applyEventPreset(
 	lang string, params ui.Params,
 ) error {
 	integrationID := paramInt(params["integration"])
+	provider, err := deps.Store.ProviderForIntegration(ctx, integrationID)
+	if err != nil {
+		return err
+	}
 	// A preset writes an explicit setting for every kind, so it overrides
 	// both previous toggles and the "missing row means on" default.
-	for _, kind := range events.Kinds() {
+	for _, kind := range events.KindsFor(provider) {
 		if err := deps.Store.SetEventEnabled(ctx, integrationID,
 			string(kind), events.PresetEnabled(params["preset"], kind)); err != nil {
 			return err

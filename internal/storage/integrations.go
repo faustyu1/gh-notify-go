@@ -27,15 +27,34 @@ func (s *Store) CreateIntegration(
 	return id, nil
 }
 
-// IntegrationsForRepo returns every live integration a webhook should fan out
-// to. Muted and broken ones are excluded here so the ingest path stays a
-// single query.
+// IntegrationsForRepo returns every live integration a GitHub webhook should
+// fan out to. Muted and broken ones are excluded here so the ingest path
+// stays a single query.
 func (s *Store) IntegrationsForRepo(
 	ctx context.Context, repoGitHubID, githubInstallationID int64,
 ) ([]domain.Integration, error) {
+	return s.liveIntegrations(ctx, `ins.github_installation_id = $2`,
+		repoGitHubID, githubInstallationID)
+}
+
+// IntegrationsForGitLabProject is the GitLab side of IntegrationsForRepo. A
+// GitLab webhook is identified by its token, which resolves straight to the
+// internal installation id.
+func (s *Store) IntegrationsForGitLabProject(
+	ctx context.Context, installationID, projectID int64,
+) ([]domain.Integration, error) {
+	return s.liveIntegrations(ctx, `ins.id = $2 AND ins.provider = 'gitlab'`,
+		projectID, installationID)
+}
+
+// liveIntegrations runs the fan-out query with the installation condition
+// supplied by the caller; $1 is always the repository id.
+func (s *Store) liveIntegrations(
+	ctx context.Context, installationCond string, repoID, installation int64,
+) ([]domain.Integration, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT i.id, i.chat_id, c.telegram_chat_id, c.topic_id,
-		       i.installation_id, ins.github_installation_id,
+		       i.installation_id, COALESCE(ins.github_installation_id, 0), ins.provider,
 		       i.repo_github_id, i.repo_full_name,
 		       i.created_by_user_id, u.telegram_id
 		FROM integrations i
@@ -43,10 +62,10 @@ func (s *Store) IntegrationsForRepo(
 		JOIN installations ins ON ins.id = i.installation_id
 		JOIN users u          ON u.id  = i.created_by_user_id
 		WHERE i.repo_github_id = $1
-		  AND ins.github_installation_id = $2
+		  AND `+installationCond+`
 		  AND i.broken_reason IS NULL
 		  AND (c.muted_until IS NULL OR c.muted_until <= now())`,
-		repoGitHubID, githubInstallationID)
+		repoID, installation)
 	if err != nil {
 		return nil, fmt.Errorf("query integrations: %w", err)
 	}
@@ -57,7 +76,7 @@ func (s *Store) IntegrationsForRepo(
 		var it domain.Integration
 		if err := rows.Scan(
 			&it.ID, &it.ChatID, &it.TelegramChatID, &it.TopicID,
-			&it.InstallationID, &it.GitHubInstallationID,
+			&it.InstallationID, &it.GitHubInstallationID, &it.Provider,
 			&it.RepoGitHubID, &it.RepoFullName,
 			&it.CreatedByUserID, &it.OwnerTelegramID,
 		); err != nil {

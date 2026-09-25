@@ -36,16 +36,23 @@ btn:
   configure: "Configurar"
   add_to_group: "Añadir al grupo"
   admin: "Panel de admin"
+  connect_gitlab: "Conectar GitLab"
+  open_gitlab: "Abrir en GitLab"
+  gitlab_projects: "Proyectos"
+  gitlab_webhook: "Ajustes del webhook"
+  gitlab_delete: "Eliminar conexión"
+  gitlab_delete_yes: "Sí, eliminar"
+  refresh: "Actualizar"
 
 home:
-  greeting: "Conecta GitHub y los eventos de tus repositorios llegarán a tus chats."
+  greeting: "Conecta GitHub o GitLab y los eventos de tus repositorios llegarán a tus chats."
   accounts: "Cuentas"
   repos: "Repositorios"
   chats: "Chats"
 
 accounts:
-  empty: "Aún no hay cuentas de GitHub conectadas."
-  title: "Cuentas de GitHub"
+  empty: "Aún no hay cuentas de GitHub o GitLab conectadas."
+  title: "Cuentas"
   hint: "Elige dónde está el repositorio."
 
 repos:
@@ -59,6 +66,15 @@ repo_detail:
 install:
   title: "Conexión de GitHub"
   body: "Pulsa el botón de abajo, elige una cuenta u organización y marca los repositorios que necesites. GitHub te devolverá aquí después de la instalación."
+
+gitlab:
+  unnamed: "GitLab"
+  hook_title: "Webhook de GitLab"
+  hook_body: "1. En GitLab abre el proyecto (o grupo) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Disparadores: push y tag push, comentarios, issues, merge requests, pipelines, wiki, despliegues, releases.\n5. Guarda y pulsa <b>Test → Push events</b>: el proyecto aparecerá en la lista.\n\nUn mismo token sirve para cualquier número de proyectos y grupos."
+  projects_title: "GitLab · {name}"
+  projects_empty: "Todavía no hay eventos de GitLab.\n\nAñade el webhook a un proyecto o grupo y pulsa «Test» en sus ajustes: el proyecto aparecerá aquí."
+  projects_count: "Proyectos: {n}"
+  delete_confirm: "¿Eliminar esta conexión de GitLab?\n\nSus repositorios dejarán de enviar eventos a todos los chats y las entregas de GitLab con este token serán rechazadas. Elimina también el webhook en GitLab."
 
 chat_picker:
   empty: "El bot todavía no está en ninguno de tus chats.\n\nAñádelo a un grupo y el chat aparecerá aquí."
@@ -258,6 +274,25 @@ ev:
 
   digest:
     line: "Demasiados eventos en un minuto — {n} más: {list}"
+
+  gitlab:
+    merge_request:
+      opened: "{user} abrió el merge request {link}"
+      draft: "{user} abrió un merge request en borrador {link}"
+      closed: "{user} cerró el merge request {link}"
+      reopened: "{user} reabrió el merge request {link}"
+      merged: "{user} fusionó el merge request {link}"
+      approved: "{user} aprobó el merge request {link}"
+    note:
+      merge_request: "{user} comentó en el merge request {link}"
+      snippet: "{user} comentó en el snippet {link}"
+    pipeline:
+      line: "Pipeline #{id} — {verdict} · <code>{branch}</code>"
+      failed: "falló"
+      canceled: "cancelado"
+      view: "Ver pipeline"
+    release:
+      line: "Publicada la release {link}"
 
   detail: "Detalles"
   report: "Informe"

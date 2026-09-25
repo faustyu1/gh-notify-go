@@ -146,3 +146,25 @@ func TestIssuesActionFilter(t *testing.T) {
 	require.True(t, events.Wanted("issues", "opened"))
 	require.False(t, events.Wanted("issues", "labeled"))
 }
+
+func TestGitLabGoldens(t *testing.T) {
+	for _, tc := range []struct {
+		kind events.Kind
+		name string
+	}{
+		{"gl_push", "gl_push"},
+		{"gl_tag_push", "gl_tag_push"},
+		{"gl_merge_request", "gl_merge_request"},
+		{"gl_merge_request", "gl_merge_request_merged"},
+		{"gl_issue", "gl_issue"},
+		{"gl_note", "gl_note_mr"},
+		{"gl_pipeline", "gl_pipeline"},
+		{"gl_release", "gl_release"},
+		{"gl_wiki_page", "gl_wiki_page"},
+		{"gl_deployment", "gl_deployment"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assertGolden(t, tc.kind, tc.name)
+		})
+	}
+}

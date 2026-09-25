@@ -3,6 +3,7 @@ package screens
 import (
 	"context"
 
+	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
@@ -26,20 +27,23 @@ func (r repoDetail) Render(_ context.Context, s ui.Session) (ui.View, error) {
 	text := render.Emoji(render.EmojiFile, "📁") + " <b>" + render.Escape(name) + "</b>\n\n" +
 		l.T("repo_detail.hint")
 
-	return ui.View{
-		Text: text,
-		Rows: [][]ui.Button{
-			{{
-				Label:  l.T("btn.connect_to_chat"),
-				Icon:   render.EmojiChat,
-				Screen: "chat_picker",
-				Params: s.Params,
-			}},
-			{{
-				Label: l.T("btn.open_github"),
-				Icon:  render.EmojiLink,
-				URL:   "https://github.com/" + name,
-			}},
-		},
-	}, nil
+	// A GitLab project may live on any instance, so its address travels in
+	// the params rather than being built from the name.
+	open := ui.Button{Label: l.T("btn.open_github"), Icon: render.EmojiLink,
+		URL: "https://github.com/" + name}
+	if s.Params["provider"] == domain.ProviderGitLab {
+		open = ui.Button{Label: l.T("btn.open_gitlab"), Icon: render.EmojiLink,
+			URL: s.Params["url"]}
+	}
+
+	rows := [][]ui.Button{{{
+		Label:  l.T("btn.connect_to_chat"),
+		Icon:   render.EmojiChat,
+		Screen: "chat_picker",
+		Params: s.Params,
+	}}}
+	if open.URL != "" {
+		rows = append(rows, []ui.Button{open})
+	}
+	return ui.View{Text: text, Rows: rows}, nil
 }

@@ -14,8 +14,8 @@ func (s *Store) InstallationsForUser(
 	ctx context.Context, userID int64,
 ) ([]domain.Installation, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, github_installation_id, account_login, account_type,
-		       suspended_at IS NOT NULL
+		SELECT id, COALESCE(github_installation_id, 0), provider,
+		       account_login, account_type, suspended_at IS NOT NULL
 		FROM installations WHERE user_id = $1
 		ORDER BY account_login`, userID)
 	if err != nil {
@@ -26,7 +26,7 @@ func (s *Store) InstallationsForUser(
 	var out []domain.Installation
 	for rows.Next() {
 		var it domain.Installation
-		if err := rows.Scan(&it.ID, &it.GitHubInstallationID,
+		if err := rows.Scan(&it.ID, &it.GitHubInstallationID, &it.Provider,
 			&it.AccountLogin, &it.AccountType, &it.Suspended); err != nil {
 			return nil, fmt.Errorf("scan installation: %w", err)
 		}
@@ -38,10 +38,10 @@ func (s *Store) InstallationsForUser(
 func (s *Store) InstallationByID(ctx context.Context, id int64) (domain.Installation, error) {
 	var it domain.Installation
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, github_installation_id, account_login, account_type,
-		       suspended_at IS NOT NULL
+		SELECT id, COALESCE(github_installation_id, 0), provider,
+		       account_login, account_type, suspended_at IS NOT NULL
 		FROM installations WHERE id = $1`, id).
-		Scan(&it.ID, &it.GitHubInstallationID, &it.AccountLogin,
+		Scan(&it.ID, &it.GitHubInstallationID, &it.Provider, &it.AccountLogin,
 			&it.AccountType, &it.Suspended)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Installation{}, fmt.Errorf("installation %d not found", id)

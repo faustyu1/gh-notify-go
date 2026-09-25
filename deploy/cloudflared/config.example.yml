@@ -9,14 +9,15 @@
 #
 #   GitHub App → Webhook URL: https://notify.example.com/gh/webhook
 #   GitHub App → Setup URL:   https://notify.example.com/github/setup
+#   GitLab     → Webhook URL: https://notify.example.com/gl/webhook
 
 tunnel: <TUNNEL-ID>
 credentials-file: /etc/cloudflared/<TUNNEL-ID>.json
 
-# Наружу торчат только два публичных пути, остальное — 404, как в Caddyfile
+# Наружу торчат только три публичных пути, остальное — 404, как в Caddyfile
 # и nginx.conf. `bot` — имя сервиса из docker-compose.yml.
 ingress:
   - hostname: notify.example.com
-    path: ^/(gh/webhook|github/setup)$
+    path: ^/(gh/webhook|gl/webhook|github/setup)$
     service: http://bot:8080
   - service: http_status:404

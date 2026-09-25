@@ -1,0 +1,15 @@
+{
+  "object_kind": "wiki_page",
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "project": {
+    "id": 1,
+    "web_url": "https://gitlab.example.com/root/awesome-project",
+    "path_with_namespace": "root/awesome-project"
+  },
+  "object_attributes": {
+    "title": "Awesome",
+    "slug": "awesome",
+    "url": "https://gitlab.example.com/root/awesome-project/-/wikis/awesome",
+    "action": "create"
+  }
+}

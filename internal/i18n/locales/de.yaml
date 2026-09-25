@@ -36,16 +36,23 @@ btn:
   configure: "Einrichten"
   add_to_group: "Zur Gruppe hinzufügen"
   admin: "Admin-Bereich"
+  connect_gitlab: "GitLab verbinden"
+  open_gitlab: "Auf GitLab öffnen"
+  gitlab_projects: "Projekte"
+  gitlab_webhook: "Webhook-Einstellungen"
+  gitlab_delete: "Verbindung löschen"
+  gitlab_delete_yes: "Ja, löschen"
+  refresh: "Aktualisieren"
 
 home:
-  greeting: "Verbinde GitHub, und die Ereignisse deiner Repositories kommen in deine Chats."
+  greeting: "Verbinde GitHub oder GitLab, und die Ereignisse deiner Repositories kommen in deine Chats."
   accounts: "Konten"
   repos: "Repositories"
   chats: "Chats"
 
 accounts:
-  empty: "Noch keine GitHub-Konten verbunden."
-  title: "GitHub-Konten"
+  empty: "Noch keine GitHub- oder GitLab-Konten verbunden."
+  title: "Konten"
   hint: "Wähle, wo das Repository liegt."
 
 repos:
@@ -59,6 +66,15 @@ repo_detail:
 install:
   title: "GitHub verbinden"
   body: "Tippe unten auf die Schaltfläche, wähle ein Konto oder eine Organisation und markiere die benötigten Repositories. GitHub bringt dich nach der Installation hierher zurück."
+
+gitlab:
+  unnamed: "GitLab"
+  hook_title: "GitLab-Webhook"
+  hook_body: "1. Öffne in GitLab das Projekt (oder die Gruppe) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Auslöser: Push und Tag-Push, Kommentare, Issues, Merge Requests, Pipelines, Wiki, Deployments, Releases.\n5. Speichern und <b>Test → Push events</b> drücken: das Projekt erscheint in der Liste.\n\nEin Token reicht für beliebig viele Projekte und Gruppen."
+  projects_title: "GitLab · {name}"
+  projects_empty: "Noch keine Ereignisse von GitLab.\n\nFüge den Webhook zu einem Projekt oder einer Gruppe hinzu und drücke dort „Test“ — das Projekt erscheint dann hier."
+  projects_count: "Projekte: {n}"
+  delete_confirm: "Diese GitLab-Verbindung löschen?\n\nIhre Repositories senden keine Ereignisse mehr an die Chats, und GitLab-Zustellungen mit diesem Token werden abgewiesen. Entferne den Webhook auch in GitLab."
 
 chat_picker:
   empty: "Der Bot ist noch in keinem deiner Chats.\n\nFüge ihn zu einer Gruppe hinzu, dann erscheint der Chat hier."
@@ -258,6 +274,25 @@ ev:
 
   digest:
     line: "Zu viele Ereignisse in einer Minute — {n} weitere: {list}"
+
+  gitlab:
+    merge_request:
+      opened: "{user} hat Merge Request {link} geöffnet"
+      draft: "{user} hat einen Entwurf-Merge-Request {link} geöffnet"
+      closed: "{user} hat Merge Request {link} geschlossen"
+      reopened: "{user} hat Merge Request {link} wieder geöffnet"
+      merged: "{user} hat Merge Request {link} gemergt"
+      approved: "{user} hat Merge Request {link} genehmigt"
+    note:
+      merge_request: "{user} hat Merge Request {link} kommentiert"
+      snippet: "{user} hat Snippet {link} kommentiert"
+    pipeline:
+      line: "Pipeline #{id} — {verdict} · <code>{branch}</code>"
+      failed: "fehlgeschlagen"
+      canceled: "abgebrochen"
+      view: "Pipeline ansehen"
+    release:
+      line: "Release {link} veröffentlicht"
 
   detail: "Details"
   report: "Bericht"

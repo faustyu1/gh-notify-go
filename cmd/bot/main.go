@@ -1,5 +1,5 @@
-// Command bot runs the Telegram bot, the GitHub webhook server, and the
-// outbox workers in one process.
+// Command bot runs the Telegram bot, the GitHub and GitLab webhook server,
+// and the outbox workers in one process.
 package main
 
 import (
@@ -128,6 +128,9 @@ func run(ctx context.Context) error {
 		screens.NewAccounts(store, loc),
 		screens.NewRepos(store, github, 10, loc),
 		screens.NewRepoDetail(store, loc),
+		screens.NewGitLabHook(cfg.HTTP.PublicURL, store, loc),
+		screens.NewGitLabProjects(store, store, 10, loc),
+		screens.NewGitLabDelete(loc),
 		screens.NewChatPicker(store, loc),
 		screens.NewAddToChat(cfg.Bot.Username, loc),
 		screens.NewResult(loc),
@@ -155,6 +158,7 @@ func run(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/gh/webhook", httpapi.NewWebhookHandler(cfg.GitHub.WebhookSecret, ingest))
+	mux.Handle(screens.GitLabWebhookPath, httpapi.NewGitLabWebhookHandler(store, ingest))
 	mux.Handle("/github/setup",
 		httpapi.NewSetupHandler(installations, store, cfg.Bot.Username))
 	// Liveness that means something: a process that cannot reach Postgres

@@ -17,6 +17,10 @@ type ignoreFilter struct {
 // branches and actions are single values; a payload carries many labels, so
 // labels come back as a list. Missing subjects are empty and never match.
 func eventSubjects(kind string, raw json.RawMessage) (author, branch string, labels []string, action string) {
+	if strings.HasPrefix(kind, "gl_") {
+		return gitlabSubjects(kind, raw)
+	}
+
 	var p struct {
 		Ref    string `json:"ref"`
 		Action string `json:"action"`
@@ -71,6 +75,66 @@ func eventSubjects(kind string, raw json.RawMessage) (author, branch string, lab
 	}
 
 	return author, branch, labels, p.Action
+}
+
+// gitlabSubjects is eventSubjects for GitLab payloads, which name the same
+// things differently: the actor is user (or user_username on a push), a
+// merge request's branch is its source branch, a pipeline's is its ref.
+func gitlabSubjects(kind string, raw json.RawMessage) (author, branch string, labels []string, action string) {
+	var p struct {
+		Ref          string `json:"ref"`
+		UserUsername string `json:"user_username"`
+		Action       string `json:"action"`
+		Status       string `json:"status"`
+		User         struct {
+			Username string `json:"username"`
+		} `json:"user"`
+		Labels []struct {
+			Title string `json:"title"`
+		} `json:"labels"`
+		ObjectAttributes struct {
+			Action       string `json:"action"`
+			Status       string `json:"status"`
+			Ref          string `json:"ref"`
+			SourceBranch string `json:"source_branch"`
+		} `json:"object_attributes"`
+		MergeRequest struct {
+			SourceBranch string `json:"source_branch"`
+		} `json:"merge_request"`
+	}
+	_ = json.Unmarshal(raw, &p)
+
+	author = p.User.Username
+	if author == "" {
+		author = p.UserUsername
+	}
+
+	switch {
+	case p.Ref != "":
+		branch = strings.TrimPrefix(strings.TrimPrefix(p.Ref, "refs/heads/"), "refs/tags/")
+	case p.ObjectAttributes.SourceBranch != "":
+		branch = p.ObjectAttributes.SourceBranch
+	case p.ObjectAttributes.Ref != "":
+		branch = p.ObjectAttributes.Ref
+	case p.MergeRequest.SourceBranch != "":
+		branch = p.MergeRequest.SourceBranch
+	}
+
+	for _, l := range p.Labels {
+		labels = append(labels, l.Title)
+	}
+
+	switch kind {
+	case "gl_pipeline":
+		action = p.ObjectAttributes.Status
+	case "gl_deployment":
+		action = p.Status
+	case "gl_release":
+		action = p.Action
+	default:
+		action = p.ObjectAttributes.Action
+	}
+	return author, branch, labels, action
 }
 
 // filterIgnored reports whether any rule suppresses this payload. Matching is

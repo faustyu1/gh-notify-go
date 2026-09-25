@@ -150,7 +150,7 @@ func (s *Store) AdminStats(ctx context.Context) (AdminStats, error) {
 				SELECT 1 FROM installations i WHERE i.user_id = users.id)),
 			count(*) FILTER (WHERE EXISTS (
 				SELECT 1 FROM integrations g WHERE g.created_by_user_id = users.id)),
-			(SELECT count(*) FROM installations),
+			(SELECT count(*) FROM installations WHERE provider = 'github'),
 			(SELECT count(*) FROM chats),
 			(SELECT count(*) FROM integrations),
 			(SELECT count(*) FROM outbox WHERE status = 'pending'),
