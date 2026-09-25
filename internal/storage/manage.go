@@ -103,7 +103,7 @@ func (s *Store) SetChatTopic(ctx context.Context, telegramChatID int64, topicID 
 func (s *Store) IntegrationsInChat(ctx context.Context, chatID int64) ([]domain.Integration, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT i.id, i.chat_id, c.telegram_chat_id, c.topic_id,
-		       i.installation_id, ins.github_installation_id,
+		       i.installation_id, COALESCE(ins.github_installation_id, 0), ins.provider,
 		       i.repo_github_id, i.repo_full_name,
 		       i.created_by_user_id, u.telegram_id, i.broken_reason
 		FROM integrations i
@@ -122,7 +122,7 @@ func (s *Store) IntegrationsInChat(ctx context.Context, chatID int64) ([]domain.
 		var it domain.Integration
 		if err := rows.Scan(
 			&it.ID, &it.ChatID, &it.TelegramChatID, &it.TopicID,
-			&it.InstallationID, &it.GitHubInstallationID,
+			&it.InstallationID, &it.GitHubInstallationID, &it.Provider,
 			&it.RepoGitHubID, &it.RepoFullName,
 			&it.CreatedByUserID, &it.OwnerTelegramID, &it.BrokenReason,
 		); err != nil {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/faustyu/gh-notify-go/internal/i18n"
@@ -89,10 +90,36 @@ func Kinds() []Kind {
 	return out
 }
 
+// gitlabPrefix marks the kinds that come from GitLab webhooks.
+const gitlabPrefix = "gl_"
+
+// KindsFor returns the kinds an integration from this provider can receive,
+// in the same stable order as Kinds. GitLab integrations get the gl_ kinds,
+// everything else gets the rest.
+func KindsFor(provider string) []Kind {
+	all := Kinds()
+	out := make([]Kind, 0, len(all))
+	for _, k := range all {
+		if strings.HasPrefix(string(k), gitlabPrefix) == (provider == "gitlab") {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// Label is how a kind is shown on a toggle: the gl_ prefix only separates
+// the providers internally, and a GitLab integration never sees the others.
+func Label(kind Kind) string {
+	return strings.TrimPrefix(string(kind), gitlabPrefix)
+}
+
 // ImportantKinds is what the «Только важное» preset keeps on.
 var ImportantKinds = map[Kind]bool{
 	"pull_request": true, "issues": true, "issue_comment": true,
 	"pull_request_review": true, "release": true, "workflow_run": true,
+
+	"gl_merge_request": true, "gl_issue": true, "gl_note": true,
+	"gl_pipeline": true, "gl_release": true,
 }
 
 // PresetEnabled reports whether a named preset keeps a kind enabled.

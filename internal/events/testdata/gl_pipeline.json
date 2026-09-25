@@ -1,0 +1,24 @@
+{
+  "object_kind": "pipeline",
+  "object_attributes": {
+    "id": 31,
+    "iid": 3,
+    "ref": "main",
+    "tag": false,
+    "sha": "bcbb5ec396a2c0f828686f14fac9b80b780504f2",
+    "status": "failed",
+    "detailed_status": "failed",
+    "url": "https://gitlab.example.com/gitlab-org/gitlab-test/-/pipelines/31"
+  },
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "project": {
+    "id": 1,
+    "web_url": "https://gitlab.example.com/gitlab-org/gitlab-test",
+    "path_with_namespace": "gitlab-org/gitlab-test"
+  },
+  "commit": {
+    "id": "bcbb5ec396a2c0f828686f14fac9b80b780504f2",
+    "message": "test\n\nlonger body",
+    "url": "https://gitlab.example.com/gitlab-org/gitlab-test/-/commit/bcbb5ec396a2c0f828686f14fac9b80b780504f2"
+  }
+}

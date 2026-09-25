@@ -1,0 +1,24 @@
+{
+  "object_kind": "merge_request",
+  "event_type": "merge_request",
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "project": {
+    "id": 1,
+    "web_url": "https://gitlab.example.com/gitlabhq/gitlab-test",
+    "path_with_namespace": "gitlabhq/gitlab-test"
+  },
+  "object_attributes": {
+    "id": 99,
+    "iid": 1,
+    "title": "MS-Viewport",
+    "description": "Adds a viewport meta tag",
+    "state": "opened",
+    "action": "open",
+    "url": "https://gitlab.example.com/gitlabhq/gitlab-test/-/merge_requests/1",
+    "source_branch": "ms-viewport",
+    "target_branch": "master",
+    "draft": false,
+    "work_in_progress": false
+  },
+  "labels": [{"id": 206, "title": "API"}]
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/faustyu/gh-notify-go/internal/domain"
 	"github.com/faustyu/gh-notify-go/internal/events/render"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
@@ -30,13 +31,24 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	if len(installations) == 0 {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("accounts.empty"),
-			Rows: [][]ui.Button{{{Label: l.T("btn.connect_github"),
-				Icon: render.EmojiLink, Screen: "install"}}},
+			Rows: [][]ui.Button{
+				{{Label: l.T("btn.connect_github"), Icon: render.EmojiLink, Screen: "install"}},
+				{{Label: l.T("btn.connect_gitlab"), Icon: render.EmojiCode, Screen: "a_gl_new"}},
+			},
 		}, nil
 	}
 
 	rows := make([][]ui.Button, 0, len(installations)+1)
 	for _, it := range installations {
+		if it.Provider == domain.ProviderGitLab {
+			rows = append(rows, []ui.Button{{
+				Label:  gitlabName(l, it),
+				Icon:   render.EmojiCode,
+				Screen: "gl_projects",
+				Params: ui.Params{"installation": strconv.FormatInt(it.ID, 10)},
+			}})
+			continue
+		}
 		icon := render.EmojiOffice
 		if it.AccountType == "User" {
 			icon = render.EmojiProfile
@@ -53,8 +65,10 @@ func (a accounts) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 			Params: ui.Params{"installation": strconv.FormatInt(it.ID, 10)},
 		}})
 	}
-	rows = append(rows, []ui.Button{{Label: l.T("btn.more_accounts"),
-		Icon: render.EmojiPlus, Screen: "install"}})
+	rows = append(rows, []ui.Button{
+		{Label: l.T("btn.more_accounts"), Icon: render.EmojiPlus, Screen: "install"},
+		{Label: l.T("btn.connect_gitlab"), Icon: render.EmojiCode, Screen: "a_gl_new"},
+	})
 
 	return ui.View{
 		Text: render.Emoji(render.EmojiProfile, "👤") + " <b>" + l.T("accounts.title") +

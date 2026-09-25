@@ -29,3 +29,28 @@ func TestWantedRejectsUnknownKind(t *testing.T) {
 func TestKindsIncludesRegisteredEvents(t *testing.T) {
 	require.Contains(t, events.Kinds(), events.Kind("push"))
 }
+
+func TestKindsForSeparatesProviders(t *testing.T) {
+	github := events.KindsFor("github")
+	gitlab := events.KindsFor("gitlab")
+
+	require.Contains(t, github, events.Kind("push"))
+	require.NotContains(t, github, events.Kind("gl_push"))
+	require.Contains(t, gitlab, events.Kind("gl_push"))
+	require.Contains(t, gitlab, events.Kind("gl_merge_request"))
+	require.NotContains(t, gitlab, events.Kind("push"))
+	require.Len(t, events.Kinds(), len(github)+len(gitlab))
+}
+
+func TestLabelDropsGitLabPrefix(t *testing.T) {
+	require.Equal(t, "merge_request", events.Label("gl_merge_request"))
+	require.Equal(t, "push", events.Label("push"))
+}
+
+func TestGitLabMergeRequestUpdatesAreNotWanted(t *testing.T) {
+	require.True(t, events.Wanted("gl_merge_request", "open"))
+	require.True(t, events.Wanted("gl_merge_request", "merge"))
+	// "update" fires on every push to the source branch.
+	require.False(t, events.Wanted("gl_merge_request", "update"))
+	require.False(t, events.Wanted("gl_pipeline", "running"))
+}

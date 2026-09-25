@@ -1,13 +1,14 @@
 # gh-notify-go
 
-A Telegram bot that delivers GitHub repository events to group chats in real
-time. Everything is driven by inline keyboards in a private chat with the bot;
+A Telegram bot that delivers GitHub and GitLab repository events to group
+chats in real time. Everything is driven by inline keyboards in a private chat with the bot;
 `/start` is the only command.
 
 A live instance runs at [@g0thubbot](https://t.me/g0thubbot) — send it `/start`
 to see the interface before deploying your own.
 
-Architecture: a single Go binary. The GitHub webhook verifies the HMAC,
+Architecture: a single Go binary. The GitHub webhook verifies the HMAC (a
+GitLab webhook, its secret token),
 deduplicates by delivery id, finds the matching integrations, and writes rows
 into a Postgres outbox. A pool of workers drains the outbox, renders each event
 as Telegram HTML, and sends it with retries and backoff.
@@ -18,6 +19,10 @@ as Telegram HTML, and sends it with retries and backoff.
 `pull_request_review_comment`, `issues`, `issue_comment`, `commit_comment`,
 `release`, `star`, `fork`, `create`, `delete`, `gollum`, `member`, `public`,
 `deployment`, `deployment_status`, `check_suite`, `workflow_run`.
+
+GitLab projects get 9 kinds of their own: `push`, `tag_push`,
+`merge_request`, `issue`, `note` (comments on merge requests, issues, commits
+and snippets), `pipeline`, `release`, `wiki_page`, `deployment`.
 
 Every kind is toggled per integration, plus three presets: everything, the
 important ones, nothing. Filters match on author, branch, label, and action.
@@ -65,6 +70,26 @@ Failing that, the picker can create a topic itself, which needs the
 Configuration is environment variables only. The full list with defaults lives
 in `.env.example`: copy it to `.env` and the binary reads it at startup. Real
 environment variables always win over the file.
+
+## Connecting GitLab
+
+GitLab has no App to install, so a GitLab connection is a webhook. **Connect
+GitLab** in the bot mints a secret token and shows what to paste into the
+project's (or group's) **Settings → Webhooks**:
+
+- URL: `https://<host>/gl/webhook`
+- Secret token: the one the bot shows (it can be viewed again under
+  **Webhook settings**)
+- Triggers: push and tag push events, comments, issues, merge requests,
+  pipelines, wiki pages, deployments, releases
+
+GitLab gives no way to list what a webhook covers, so a project appears in the
+bot once it has sent its first event — the webhook's **Test** button is
+enough. One token serves any number of projects and groups, on gitlab.com or
+a self-managed instance: no GitLab API access is needed, only that GitLab can
+reach `PUBLIC_URL`. A connection is removed from the bot itself (**Delete
+connection**), which stops delivery for every chat it feeds and makes GitLab's
+further deliveries fail with 401.
 
 ## Creating the GitHub App
 
@@ -123,8 +148,8 @@ cp ~/.cloudflared/<TUNNEL-ID>.json deploy/cloudflared/
 cp deploy/cloudflared/config.example.yml deploy/cloudflared/config.yml
 ```
 
-Put your tunnel id and host into `config.yml`; only `/gh/webhook` and
-`/github/setup` are exposed, everything else is a 404. Then:
+Put your tunnel id and host into `config.yml`; only `/gh/webhook`,
+`/gl/webhook` and `/github/setup` are exposed, everything else is a 404. Then:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
@@ -132,7 +157,7 @@ docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d
 
 `PUBLIC_URL` is the same `https://notify.example.com` used in the tunnel route.
 Telegram updates arrive over long polling anyway, so the only inbound traffic
-is the GitHub webhook, and the tunnel covers that path entirely.
+is the GitHub and GitLab webhooks, and the tunnel covers those paths entirely.
 
 **Run exactly one instance.** Telegram updates are fetched by long polling, and
 two copies would fight over `getUpdates`. Migrations take an advisory lock at

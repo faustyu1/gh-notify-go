@@ -23,6 +23,14 @@ type Store interface {
 	TopicsForChat(ctx context.Context, chatID int64) ([]storage.ChatTopic, error)
 	CreatorTelegramForIntegration(ctx context.Context, integrationID int64) (int64, error)
 	StatusStats(ctx context.Context, userID int64) (sent, failed int, err error)
+	ProviderForIntegration(ctx context.Context, integrationID int64) (string, error)
+}
+
+// GitLab is what the GitLab connection screens read. Every call is scoped to
+// the connection's owner: the token and the project list are theirs alone.
+type GitLab interface {
+	GitLabProjects(ctx context.Context, installationID, userID int64) ([]storage.GitLabProject, error)
+	GitLabWebhookToken(ctx context.Context, installationID, userID int64) (string, error)
 }
 
 // Roles is the screen-side half of the ownership rule: a button that would

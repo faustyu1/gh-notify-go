@@ -24,6 +24,7 @@ type Integration struct {
 	TopicID              *int64
 	InstallationID       int64
 	GitHubInstallationID int64
+	Provider             string
 	RepoGitHubID         int64
 	RepoFullName         string
 	CreatedByUserID      int64
@@ -31,9 +32,18 @@ type Integration struct {
 	BrokenReason         *string
 }
 
+// Provider names where an installation's repositories live.
+const (
+	ProviderGitHub = "github"
+	ProviderGitLab = "gitlab"
+)
+
+// Installation is one source of repositories: a GitHub App installation, or
+// a GitLab webhook connection. GitHubInstallationID is zero for GitLab.
 type Installation struct {
 	ID                   int64
 	GitHubInstallationID int64
+	Provider             string
 	AccountLogin         string
 	AccountType          string
 	Suspended            bool

@@ -1,0 +1,14 @@
+{
+  "object_kind": "release",
+  "id": 1,
+  "name": "v1.1",
+  "tag": "v1.1",
+  "description": "## Changes\n\n- faster",
+  "url": "https://gitlab.example.com/gitlab-org/release-webhook-example/-/releases/v1.1",
+  "action": "create",
+  "project": {
+    "id": 2,
+    "web_url": "https://gitlab.example.com/gitlab-org/release-webhook-example",
+    "path_with_namespace": "gitlab-org/release-webhook-example"
+  }
+}

@@ -1,6 +1,9 @@
-# Terminates TLS and forwards only the two public paths to the bot.
+# Terminates TLS and forwards only the three public paths to the bot.
 notify.example.com {
 	handle /gh/webhook {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /gl/webhook {
 		reverse_proxy 127.0.0.1:8080
 	}
 	handle /github/setup {

@@ -1,0 +1,24 @@
+{
+  "object_kind": "note",
+  "event_type": "note",
+  "user": {"id": 1, "name": "Administrator", "username": "root"},
+  "project_id": 5,
+  "project": {
+    "id": 5,
+    "web_url": "https://gitlab.example.com/gitlab-org/gitlab-test",
+    "path_with_namespace": "gitlab-org/gitlab-test"
+  },
+  "object_attributes": {
+    "id": 1244,
+    "note": "This MR needs work. **Please** rebase.",
+    "noteable_type": "MergeRequest",
+    "url": "https://gitlab.example.com/gitlab-org/gitlab-test/-/merge_requests/1#note_1244"
+  },
+  "merge_request": {
+    "id": 7,
+    "iid": 1,
+    "title": "Tempora et eos debitis quae laborum et.",
+    "source_branch": "master",
+    "target_branch": "markdown"
+  }
+}

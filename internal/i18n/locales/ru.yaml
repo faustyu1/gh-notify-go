@@ -37,16 +37,23 @@ btn:
   configure: "Настроить"
   add_to_group: "Добавить в группу"
   admin: "Админка"
+  connect_gitlab: "Подключить GitLab"
+  open_gitlab: "Открыть на GitLab"
+  gitlab_projects: "Проекты"
+  gitlab_webhook: "Настройка вебхука"
+  gitlab_delete: "Удалить подключение"
+  gitlab_delete_yes: "Да, удалить"
+  refresh: "Обновить"
 
 home:
-  greeting: "Подключи GitHub, и события репозиториев будут приходить в твои чаты."
+  greeting: "Подключи GitHub или GitLab, и события репозиториев будут приходить в твои чаты."
   accounts: "Аккаунтов"
   repos: "Репозиториев"
   chats: "Чатов"
 
 accounts:
-  empty: "Пока нет подключённых аккаунтов GitHub."
-  title: "Аккаунты GitHub"
+  empty: "Пока нет подключённых аккаунтов GitHub или GitLab."
+  title: "Аккаунты"
   hint: "Выбери, где лежит репозиторий."
 
 repos:
@@ -60,6 +67,15 @@ repo_detail:
 install:
   title: "Подключение GitHub"
   body: "Нажми кнопку ниже, выбери аккаунт или организацию и отметь нужные репозитории. После установки GitHub вернёт тебя обратно сюда."
+
+gitlab:
+  unnamed: "GitLab"
+  hook_title: "Вебхук GitLab"
+  hook_body: "1. В GitLab открой проект (или группу) → <b>Settings → Webhooks</b> → <b>Add new webhook</b>.\n2. URL:\n<code>{url}</code>\n3. Secret token:\n<code>{token}</code>\n4. Триггеры: push и tag push, комментарии, issues, merge requests, пайплайны, wiki, деплои, релизы.\n5. Сохрани и нажми <b>Test → Push events</b>: проект появится в списке.\n\nОдин токен подходит для любого числа проектов и групп."
+  projects_title: "GitLab · {name}"
+  projects_empty: "От GitLab пока не было событий.\n\nДобавь вебхук в проект или группу и нажми «Test» в его настройках — проект появится здесь."
+  projects_count: "Проектов: {n}"
+  delete_confirm: "Удалить это подключение GitLab?\n\nЕго репозитории перестанут присылать события во все чаты, а запросы GitLab с этим токеном будут отклоняться. Удали вебхук и в самом GitLab."
 
 chat_picker:
   empty: "Бот пока не добавлен ни в один твой чат.\n\nДобавь его в группу, и чат появится здесь."
@@ -262,6 +278,25 @@ ev:
 
   digest:
     line: "Слишком много событий за минуту — ещё {n}: {list}"
+
+  gitlab:
+    merge_request:
+      opened: "{user} открыл merge request {link}"
+      draft: "{user} открыл черновик merge request {link}"
+      closed: "{user} закрыл merge request {link}"
+      reopened: "{user} переоткрыл merge request {link}"
+      merged: "{user} вмержил merge request {link}"
+      approved: "{user} одобрил merge request {link}"
+    note:
+      merge_request: "{user} прокомментировал merge request {link}"
+      snippet: "{user} прокомментировал сниппет {link}"
+    pipeline:
+      line: "Пайплайн #{id} — {verdict} · <code>{branch}</code>"
+      failed: "упал"
+      canceled: "отменён"
+      view: "Открыть пайплайн"
+    release:
+      line: "Опубликован релиз {link}"
 
   detail: "Подробнее"
   report: "Отчёт"
