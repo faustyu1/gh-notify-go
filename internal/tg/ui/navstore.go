@@ -26,6 +26,7 @@ type NavStore interface {
 	Push(ctx context.Context, userID int64, screen string, params Params) error
 	Pop(ctx context.Context, userID int64) (screen string, params Params, err error)
 	Depth(ctx context.Context, userID int64) (int, error)
+	Prune(ctx context.Context, userID int64, drop func(screen string, params Params) bool) (screen string, params Params, err error)
 	PutAction(ctx context.Context, userID int64, key, screen string, params Params) error
 	GetAction(ctx context.Context, userID int64, key string) (screen string, params Params, err error)
 	AnchorMessageID(ctx context.Context, userID int64) (int, error)
@@ -102,6 +103,31 @@ func (n postgresNav) Pop(ctx context.Context, userID int64) (string, Params, err
 		return "", nil, err
 	}
 	top := stack[len(stack)-1]
+	return top.Screen, top.Params, nil
+}
+
+// Prune removes every frame drop matches, wherever it sits on the stack, and
+// returns the frame left on top. An emptied stack falls back to home.
+func (n postgresNav) Prune(
+	ctx context.Context, userID int64, drop func(screen string, params Params) bool,
+) (string, Params, error) {
+	stack, err := n.load(ctx, userID)
+	if err != nil {
+		return "", nil, err
+	}
+	kept := stack[:0]
+	for _, f := range stack {
+		if !drop(f.Screen, f.Params) {
+			kept = append(kept, f)
+		}
+	}
+	if len(kept) == 0 {
+		kept = append(kept, frame{Screen: "home"})
+	}
+	if err := n.save(ctx, userID, kept); err != nil {
+		return "", nil, err
+	}
+	top := kept[len(kept)-1]
 	return top.Screen, top.Params, nil
 }
 

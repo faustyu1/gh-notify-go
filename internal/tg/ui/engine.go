@@ -135,6 +135,24 @@ func (e *Engine) Back(
 	return e.render(ctx, userID, telegramID, screen, params, lang)
 }
 
+// Forget drops every frame whose params[key] is value and renders what is left
+// on top. Deleting something must take its screens off the stack too, or
+// ◁ Назад walks straight back into a screen that can no longer render.
+func (e *Engine) Forget(
+	ctx context.Context, userID, telegramID int64, key, value, lang string,
+) (View, error) {
+	screen, params, err := e.nav.Prune(ctx, userID, func(_ string, p Params) bool {
+		return p[key] == value
+	})
+	if err != nil {
+		return View{}, err
+	}
+	if err := e.authorize(ctx, telegramID, screen, params); err != nil {
+		return View{}, err
+	}
+	return e.render(ctx, userID, telegramID, screen, params, lang)
+}
+
 func (e *Engine) BackButtonLabel(lang string) string {
 	return e.loc.Localizer(lang).T("nav.back")
 }
