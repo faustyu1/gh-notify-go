@@ -3,9 +3,12 @@ package screens
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/faustyu/gh-notify-go/internal/events/render"
+	"github.com/faustyu/gh-notify-go/internal/ghapp"
 	"github.com/faustyu/gh-notify-go/internal/i18n"
 	"github.com/faustyu/gh-notify-go/internal/tg/ui"
 )
@@ -40,11 +43,52 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		return ui.View{}, err
 	}
 
-	if len(list) == 0 {
+	query := strings.TrimSpace(s.Params["q"])
+	base := ui.Params{"installation": s.Params["installation"]}
+	if query != "" {
+		base["q"] = query
+	}
+	withPage := func(page int) ui.Params {
+		p := ui.Params{"page": strconv.Itoa(page)}
+		for k, v := range base {
+			p[k] = v
+		}
+		return p
+	}
+
+	if len(list) == 0 && query == "" {
 		return ui.View{
 			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " + l.T("repos.empty"),
 			Rows: [][]ui.Button{{{Label: l.T("btn.configure_access"),
 				Icon: render.EmojiLink, Screen: "install"}}},
+		}, nil
+	}
+
+	// The most recently pushed repositories are the ones being worked on, so
+	// they come first; a long list is otherwise alphabetical noise.
+	slices.SortStableFunc(list, func(a, b ghapp.Repository) int {
+		return b.PushedAt.Compare(a.PushedAt)
+	})
+
+	if query != "" {
+		needle := strings.ToLower(query)
+		list = slices.DeleteFunc(list, func(repo ghapp.Repository) bool {
+			return !strings.Contains(strings.ToLower(repo.FullName), needle)
+		})
+	}
+
+	search := ui.Button{Label: l.T("repos.search"), Icon: render.EmojiEye,
+		Screen: "a_repo_search", Params: ui.Params{"installation": s.Params["installation"]}}
+	if query != "" {
+		search = ui.Button{Label: l.T("repos.search_reset"), Icon: render.EmojiCross,
+			Screen: "repos", Params: ui.Params{"installation": s.Params["installation"]}}
+	}
+
+	if len(list) == 0 {
+		return ui.View{
+			Text: render.Emoji(render.EmojiInfo, "ℹ") + " " +
+				l.T("repos.search_empty", "q", render.Escape(query)),
+			Rows: [][]ui.Button{{search}},
 		}, nil
 	}
 
@@ -60,7 +104,8 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	start := page * r.pageSize
 	end := min(start+r.pageSize, len(list))
 
-	rows := make([][]ui.Button, 0, r.pageSize+1)
+	rows := make([][]ui.Button, 0, r.pageSize+2)
+	rows = append(rows, []ui.Button{search})
 	for _, repo := range list[start:end] {
 		icon := render.EmojiFolder
 		if repo.Private {
@@ -85,19 +130,13 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 		if page > 0 {
 			nav = append(nav, ui.Button{
 				Label: l.T("btn.prev_page"), Icon: render.EmojiBack, Screen: "repos",
-				Params: ui.Params{
-					"installation": s.Params["installation"],
-					"page":         strconv.Itoa(page - 1),
-				},
+				Params: withPage(page - 1),
 			})
 		}
 		if page < pages-1 {
 			nav = append(nav, ui.Button{
 				Label: l.T("btn.next_page"), Icon: render.EmojiForward, Screen: "repos",
-				Params: ui.Params{
-					"installation": s.Params["installation"],
-					"page":         strconv.Itoa(page + 1),
-				},
+				Params: withPage(page + 1),
 			})
 		}
 		rows = append(rows, nav)
@@ -106,6 +145,9 @@ func (r repos) Render(ctx context.Context, s ui.Session) (ui.View, error) {
 	text := render.Emoji(render.EmojiFile, "📁") + " <b>" +
 		render.Escape(installation.AccountLogin) + "</b>\n\n" +
 		l.T("repos.count", "n", len(list))
+	if query != "" {
+		text += l.T("repos.search_for", "q", render.Escape(query))
+	}
 	if pages > 1 {
 		text += l.T("repos.page", "n", page+1, "total", pages)
 	}

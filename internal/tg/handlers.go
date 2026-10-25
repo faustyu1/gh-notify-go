@@ -293,6 +293,9 @@ func handleCallback(ctx *th.Context, deps HandlerDeps, query telego.CallbackQuer
 		audit(ctx, deps, userID, telegramChatID, "integration.filter_delete",
 			map[string]any{"filter": params["filter"]})
 		return reopen(ctx, deps, userID, query.From.ID, lang, "filters", params)
+	case "a_repo_search":
+		return startInput(ctx, deps, userID, query.From.ID, lang, "repo_search", params,
+			deps.Loc.Localizer(lang).T("prompt.repo_search"))
 	case "a_refresh":
 		return refresh(ctx, deps, userID, query.From.ID, lang, params)
 	case "adm_ref_new":
@@ -601,6 +604,12 @@ func handleReplyInput(ctx *th.Context, deps HandlerDeps, message telego.Message)
 		}
 		audit(ctx, deps, userID, 0, "admin.ref_create", map[string]any{"ref": link.ID})
 		screen, params = "adm_ref", ui.Params{"ref": strconv.FormatInt(link.ID, 10)}
+	case "repo_search":
+		screen = "repos"
+		if len([]rune(reply)) > 100 {
+			reply = string([]rune(reply)[:100])
+		}
+		params = ui.Params{"installation": params["installation"], "q": reply}
 	case "filter":
 		screen = "filters"
 		if reply == "" || len(reply) > 100 {
@@ -633,6 +642,8 @@ func pendingScope(action string) string {
 		return "a_filter_add"
 	case "ref_name":
 		return "adm_ref_new"
+	case "repo_search":
+		return "a_repo_search"
 	case "broadcast":
 		return "adm_bc_new"
 	}

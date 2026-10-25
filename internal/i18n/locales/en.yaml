@@ -63,6 +63,10 @@ repos:
   empty: "No repositories are selected for this installation.\n\nOpen the GitHub App settings and add repositories."
   count: "Repositories: {n}"
   page: "   ·   page {n}/{total}"
+  search: "Search"
+  search_reset: "Reset search"
+  search_for: "\n🔎 «{q}»"
+  search_empty: "Nothing matches «{q}»."
 
 repo_detail:
   hint: "Pick the chat this repository's events should go to."
@@ -175,6 +179,7 @@ placeholder:
 
 # The DM side of the bot: ForceReply prompts and one-off notices.
 prompt:
+  repo_search: "Send part of a repository name."
   filter: "Send a pattern for the filter ({kind}). You may use *."
   filter_invalid: "⚠️ The pattern is empty or too long."
 

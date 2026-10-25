@@ -58,6 +58,10 @@ repos:
   empty: "No hay repositorios seleccionados para esta instalación.\n\nAbre los ajustes de la GitHub App y añade repositorios."
   count: "Repositorios: {n}"
   page: "   ·   pág. {n}/{total}"
+  search: "Buscar"
+  search_reset: "Quitar búsqueda"
+  search_for: "\n🔎 «{q}»"
+  search_empty: "Nada coincide con «{q}»."
 
 repo_detail:
   hint: "Elige el chat al que enviar los eventos de este repositorio."
@@ -169,6 +173,7 @@ placeholder:
   body: "Esta sección aún está en obras."
 
 prompt:
+  repo_search: "Envía parte del nombre del repositorio."
   filter: "Envía un patrón para el filtro ({kind}). Puedes usar *."
   filter_invalid: "⚠️ El patrón está vacío o es demasiado largo."
 

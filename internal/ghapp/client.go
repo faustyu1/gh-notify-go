@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 type Repository struct {
@@ -15,6 +16,8 @@ type Repository struct {
 	FullName    string
 	Private     bool
 	Description string
+	// PushedAt is the last push to any branch, zero for an empty repository.
+	PushedAt time.Time
 }
 
 // Account is the GitHub user or organization an installation belongs to.
@@ -59,10 +62,11 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 	for url != "" {
 		var page struct {
 			Repositories []struct {
-				ID          int64  `json:"id"`
-				FullName    string `json:"full_name"`
-				Private     bool   `json:"private"`
-				Description string `json:"description"`
+				ID          int64      `json:"id"`
+				FullName    string     `json:"full_name"`
+				Private     bool       `json:"private"`
+				Description string     `json:"description"`
+				PushedAt    *time.Time `json:"pushed_at"`
 			} `json:"repositories"`
 		}
 
@@ -71,12 +75,16 @@ func (c *Client) ListRepositories(ctx context.Context, installationID int64) ([]
 			return nil, err
 		}
 		for _, r := range page.Repositories {
-			out = append(out, Repository{
+			repo := Repository{
 				GitHubID:    r.ID,
 				FullName:    r.FullName,
 				Private:     r.Private,
 				Description: r.Description,
-			})
+			}
+			if r.PushedAt != nil {
+				repo.PushedAt = *r.PushedAt
+			}
+			out = append(out, repo)
 		}
 		url = next
 	}
