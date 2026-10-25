@@ -56,10 +56,10 @@ func (s *Store) MigrateChat(ctx context.Context, oldTelegramID, newTelegramID in
 
 		merge := []string{
 			`INSERT INTO chat_managers (chat_id, user_id, created_at)
-			 SELECT $1, user_id, created_at FROM chat_managers WHERE chat_id = $2
+			 SELECT $1::bigint, user_id, created_at FROM chat_managers WHERE chat_id = $2
 			 ON CONFLICT DO NOTHING`,
 			`INSERT INTO chat_topics (chat_id, topic_id, title, seen_at)
-			 SELECT $1, topic_id, title, seen_at FROM chat_topics WHERE chat_id = $2
+			 SELECT $1::bigint, topic_id, title, seen_at FROM chat_topics WHERE chat_id = $2
 			 ON CONFLICT DO NOTHING`,
 			`UPDATE integrations i SET chat_id = $1
 			 WHERE i.chat_id = $2 AND NOT EXISTS (
@@ -68,12 +68,14 @@ func (s *Store) MigrateChat(ctx context.Context, oldTelegramID, newTelegramID in
 			       AND o.repo_github_id = i.repo_github_id)`,
 			`UPDATE outbox SET chat_id = $1 WHERE chat_id = $2`,
 			`UPDATE audit_log SET chat_id = $1 WHERE chat_id = $2`,
-			`DELETE FROM chats WHERE id = $2`,
 		}
 		for _, q := range merge {
 			if _, err := tx.Exec(ctx, q, oldID, newID); err != nil {
 				return err
 			}
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM chats WHERE id = $1`, newID); err != nil {
+			return err
 		}
 
 		// The duplicate was written from the supergroup itself, so its title
