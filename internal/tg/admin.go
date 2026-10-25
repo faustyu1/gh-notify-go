@@ -24,7 +24,15 @@ type AdminChecker struct {
 
 	mu    sync.Mutex
 	cache map[int64]adminEntry
+
+	// onMigrated records a group that Telegram upgraded to a supergroup, so
+	// the admin list can be fetched again under the new id.
+	onMigrated ChatMigrator
 }
+
+// ChatMigrator moves a chat from the id of a group to the id of the
+// supergroup Telegram upgraded it to.
+type ChatMigrator func(ctx context.Context, oldTelegramChatID, newTelegramChatID int64) error
 
 type adminEntry struct {
 	ids     map[int64]struct{}
@@ -34,6 +42,13 @@ type adminEntry struct {
 
 func NewAdminChecker(api AdminAPI, ttl time.Duration) *AdminChecker {
 	return &AdminChecker{api: api, ttl: ttl, cache: map[int64]adminEntry{}}
+}
+
+// WithChatMigrated follows group-to-supergroup upgrades instead of failing
+// every check against the dead group id.
+func (a *AdminChecker) WithChatMigrated(fn ChatMigrator) *AdminChecker {
+	a.onMigrated = fn
+	return a
 }
 
 func (a *AdminChecker) IsAdmin(
@@ -74,6 +89,13 @@ func (a *AdminChecker) entry(ctx context.Context, telegramChatID int64) (adminEn
 
 	members, err := a.api.GetChatAdministrators(ctx,
 		&telego.GetChatAdministratorsParams{ChatID: telego.ChatID{ID: telegramChatID}})
+	if newChatID, ok := MigratedTo(err); ok && a.onMigrated != nil {
+		if migrateErr := a.onMigrated(ctx, telegramChatID, newChatID); migrateErr != nil {
+			return adminEntry{}, migrateErr
+		}
+		members, err = a.api.GetChatAdministrators(ctx,
+			&telego.GetChatAdministratorsParams{ChatID: telego.ChatID{ID: newChatID}})
+	}
 	if err != nil {
 		return adminEntry{}, fmt.Errorf("get chat administrators: %w", err)
 	}

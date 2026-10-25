@@ -50,6 +50,15 @@ func RegisterHandlers(bh *th.BotHandler, deps HandlerDeps) {
 		return handleAdmin(ctx, deps, message)
 	}, th.CommandEqual("admin"))
 
+	// A group upgraded to a supergroup gets a new id. Telegram posts the
+	// upgrade as a service message in both chats; either one moves the row.
+	bh.HandleMessage(func(ctx *th.Context, message telego.Message) error {
+		return handleChatMigrated(ctx, deps, message)
+	}, func(_ context.Context, update telego.Update) bool {
+		return update.Message != nil &&
+			(update.Message.MigrateToChatID != 0 || update.Message.MigrateFromChatID != 0)
+	})
+
 	// Groups are watched for one thing only: which forum topics exist. The
 	// handler runs before the reply handler because a group message is never
 	// an answer to a ForceReply prompt, which only ever happens in DM.
@@ -71,6 +80,15 @@ func RegisterHandlers(bh *th.BotHandler, deps HandlerDeps) {
 	bh.HandleMyChatMember(func(ctx *th.Context, update telego.ChatMemberUpdated) error {
 		return handleAddedToChat(ctx, deps, update)
 	})
+}
+
+func handleChatMigrated(ctx *th.Context, deps HandlerDeps, message telego.Message) error {
+	oldID, newID := message.Chat.ID, message.MigrateToChatID
+	if message.MigrateFromChatID != 0 {
+		oldID, newID = message.MigrateFromChatID, message.Chat.ID
+	}
+	slog.Info("chat migrated", "from", oldID, "to", newID)
+	return deps.Store.MigrateChat(ctx, oldID, newID)
 }
 
 func handleStart(ctx *th.Context, deps HandlerDeps, message telego.Message) error {

@@ -38,12 +38,23 @@ type Sender struct {
 	// onTopicMissing clears a forum topic that Telegram says no longer
 	// exists, so later events go to the General topic instead of failing.
 	onTopicMissing func(ctx context.Context, chatID int64) error
+
+	// onMigrated moves the chat to the supergroup id Telegram reports after
+	// a group upgrade, so the job is resent there instead of dropped.
+	onMigrated ChatMigrator
 }
 
 func NewSender(
 	api API, onTopicMissing func(ctx context.Context, chatID int64) error, loc *i18n.Bundle,
 ) *Sender {
 	return &Sender{api: api, loc: loc, onTopicMissing: onTopicMissing}
+}
+
+// WithChatMigrated follows group-to-supergroup upgrades instead of treating
+// the dead group id as a permanent failure.
+func (s *Sender) WithChatMigrated(fn ChatMigrator) *Sender {
+	s.onMigrated = fn
+	return s
 }
 
 func (s *Sender) Deliver(ctx context.Context, job outbox.Job) error {
@@ -77,6 +88,19 @@ func (s *Sender) sendPart(ctx context.Context, job outbox.Job, text string) erro
 	_, err := s.api.SendMessage(ctx, params)
 	if err == nil {
 		return nil
+	}
+
+	// The group became a supergroup. Move the chat and resend under the new
+	// id; later jobs read the new id from the database.
+	if newChatID, ok := MigratedTo(err); ok && s.onMigrated != nil {
+		if migrateErr := s.onMigrated(ctx, job.TelegramChatID, newChatID); migrateErr != nil {
+			return fmt.Errorf("migrate chat: %w", migrateErr)
+		}
+		params.ChatID = telego.ChatID{ID: newChatID}
+		job.TelegramChatID = newChatID
+		if _, err = s.api.SendMessage(ctx, params); err == nil {
+			return nil
+		}
 	}
 
 	// The topic was deleted. Clear it and resend to the General topic.
@@ -152,6 +176,17 @@ func ClassifyError(err error) (permanent bool, retryAfter time.Duration) {
 	default:
 		return false, 0
 	}
+}
+
+// MigratedTo returns the supergroup id Telegram reports when a call hits a
+// group that was upgraded to a supergroup.
+func MigratedTo(err error) (int64, bool) {
+	var apiErr *telegoapi.Error
+	if !errors.As(err, &apiErr) || apiErr.Parameters == nil ||
+		apiErr.Parameters.MigrateToChatID == 0 {
+		return 0, false
+	}
+	return apiErr.Parameters.MigrateToChatID, true
 }
 
 func isTopicMissing(err error) bool {

@@ -87,9 +87,16 @@ func run(ctx context.Context) error {
 	}
 
 	queue := outbox.NewQueue(store.Pool(), time.Now)
+	// A group upgraded to a supergroup changes id; every Telegram call that
+	// hits the old id moves the chat and retries under the new one.
+	migrateChat := func(ctx context.Context, oldChatID, newChatID int64) error {
+		slog.Info("chat migrated", "from", oldChatID, "to", newChatID)
+		return store.MigrateChat(ctx, oldChatID, newChatID)
+	}
+
 	sender := tg.NewSender(bot, func(ctx context.Context, chatID int64) error {
 		return store.ClearTopic(ctx, chatID)
-	}, loc)
+	}, loc).WithChatMigrated(migrateChat)
 
 	// A row that will never be retried must be heard about: the owner gets a
 	// DM, and a kicked bot marks the integration broken.
@@ -117,7 +124,7 @@ func run(ctx context.Context) error {
 
 	// One admin checker for the whole bot: the connect flow and the screen
 	// guard share its cache, so a burst of taps stays one Telegram call.
-	admins := tg.NewAdminChecker(bot, time.Minute)
+	admins := tg.NewAdminChecker(bot, time.Minute).WithChatMigrated(migrateChat)
 	guard := tg.NewGuard(admins, store).WithAdmins(cfg.Bot.AdminIDs)
 
 	hookSetup := screens.NewHookSetup(cfg.HTTP.PublicURL, store, store, loc)
