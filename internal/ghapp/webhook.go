@@ -47,7 +47,10 @@ type Envelope struct {
 }
 
 type envelopeShape struct {
-	Action     string `json:"action"`
+	Action     string            `json:"action"`
+	Deleted    bool              `json:"deleted"`
+	Created    bool              `json:"created"`
+	Commits    []json.RawMessage `json:"commits"`
 	Repository *struct {
 		ID       int64  `json:"id"`
 		FullName string `json:"full_name"`
@@ -68,6 +71,18 @@ func ParseEnvelope(kind, deliveryID string, body []byte) (Envelope, error) {
 		Kind:       kind,
 		Action:     shape.Action,
 		Raw:        json.RawMessage(body),
+	}
+	// push has no action field. A deleted branch, and a branch created
+	// without new commits, still arrive as a push next to their own
+	// delete/create event; naming them lets the action filter drop the
+	// empty duplicate.
+	if kind == "push" {
+		switch {
+		case shape.Deleted:
+			env.Action = "deleted"
+		case shape.Created && len(shape.Commits) == 0:
+			env.Action = "created"
+		}
 	}
 	if shape.Repository != nil {
 		env.RepoGitHubID = shape.Repository.ID

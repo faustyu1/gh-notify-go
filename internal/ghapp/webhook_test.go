@@ -67,6 +67,30 @@ func TestParseEnvelopeToleratesMissingOptionalFields(t *testing.T) {
 	require.Equal(t, int64(0), env.InstallationID)
 }
 
+func TestParseEnvelopeNamesBranchDeletionPush(t *testing.T) {
+	env, err := ghapp.ParseEnvelope("push", "d-4",
+		[]byte(`{"ref":"refs/heads/x","deleted":true,"commits":[]}`))
+	require.NoError(t, err)
+	require.Equal(t, "deleted", env.Action)
+
+	env, err = ghapp.ParseEnvelope("push", "d-5", []byte(`{"ref":"refs/heads/x"}`))
+	require.NoError(t, err)
+	require.Equal(t, "", env.Action)
+}
+
+func TestParseEnvelopeNamesEmptyBranchCreationPush(t *testing.T) {
+	env, err := ghapp.ParseEnvelope("push", "d-6",
+		[]byte(`{"ref":"refs/heads/x","created":true,"commits":[]}`))
+	require.NoError(t, err)
+	require.Equal(t, "created", env.Action)
+
+	// A new branch that brings commits is still a push worth sending.
+	env, err = ghapp.ParseEnvelope("push", "d-7",
+		[]byte(`{"ref":"refs/heads/x","created":true,"commits":[{"id":"a"}]}`))
+	require.NoError(t, err)
+	require.Equal(t, "", env.Action)
+}
+
 func TestParseEnvelopeRejectsInvalidJSON(t *testing.T) {
 	_, err := ghapp.ParseEnvelope("push", "d-3", []byte(`{`))
 	require.Error(t, err)

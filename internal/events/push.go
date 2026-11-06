@@ -36,8 +36,10 @@ type pushPayload struct {
 }
 
 func init() {
-	// push has no action field, so every delivery is wanted.
-	Register("push", nil, renderPush)
+	// push has no action field. Only an empty push beside a branch
+	// deletion or creation is given one ("deleted"/"created", see
+	// ghapp.ParseEnvelope): the delete/create event already reports it.
+	Register("push", ActionFilter{""}, renderPush)
 }
 
 func renderPush(loc *i18n.Localizer, raw json.RawMessage) (string, error) {

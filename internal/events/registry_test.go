@@ -17,9 +17,11 @@ func TestRenderUnknownKindIsAnError(t *testing.T) {
 }
 
 func TestWantedHonoursActionFilter(t *testing.T) {
-	// push registers with an empty filter: every delivery is wanted.
+	// push carries no action, except an empty push beside a branch
+	// deletion or creation, which the delete/create event already reports.
 	require.True(t, events.Wanted("push", ""))
-	require.True(t, events.Wanted("push", "anything"))
+	require.False(t, events.Wanted("push", "deleted"))
+	require.False(t, events.Wanted("push", "created"))
 }
 
 func TestWantedRejectsUnknownKind(t *testing.T) {
